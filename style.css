@@ -8,6 +8,10 @@
     --border-color: rgba(255, 255, 255, 0.1);
     --tile-bg: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
     --tile-color: #0f172a;
+    
+    /* Fluid Tile Sizes */
+    --tile-width: clamp(18px, 4.5vmin, 56px);
+    --tile-height: clamp(25px, 6.1vmin, 76px);
 }
 
 * {
@@ -238,8 +242,8 @@ button.primary:hover {
 
 /* --- Realistic SVG Tiles (擬真圖片麻將牌) --- */
 .tile {
-    width: var(--tile-width, 56px);
-    height: var(--tile-height, 76px);
+    width: var(--tile-width);
+    height: var(--tile-height);
     background: #ffffff; /* 純白/象牙白，避免藍藍的 */
     border: 1px solid #d1d5db; /* 中性灰色邊框 */
     border-radius: 6px;
@@ -269,8 +273,8 @@ button.primary:hover {
 }
 
 .my-hand .tile {
-    width: var(--tile-width, 56px);
-    height: var(--tile-height, 76px);
+    width: var(--tile-width);
+    height: var(--tile-height);
     cursor: pointer;
     transition: transform 0.2s ease;
 }
@@ -280,10 +284,10 @@ button.primary:hover {
 }
 
 /* 剛摸到的牌（在手牌最後面）隔開一整張牌的距離 */
-.player-area.bottom .drawn-tile { margin-left: var(--tile-width, 56px); }
-.player-area.top .drawn-tile { margin-left: var(--tile-width, 56px); }
-.player-area.left .drawn-tile { margin-top: var(--tile-height, 76px); }
-.player-area.right .drawn-tile { margin-top: var(--tile-height, 76px); }
+.player-area.bottom .drawn-tile { margin-left: var(--tile-width); }
+.player-area.top .drawn-tile { margin-left: var(--tile-width); }
+.player-area.left .drawn-tile { margin-top: var(--tile-height); }
+.player-area.right .drawn-tile { margin-top: var(--tile-height); }
 
 /* 背面 */
 .hidden-tile {
@@ -306,8 +310,8 @@ button.primary:hover {
 
 /* Center Area */
 .center-area {
-    width: 500px;
-    height: 400px;
+    width: clamp(250px, 45vw, 500px);
+    height: clamp(250px, 45vh, 400px);
     position: absolute;
     display: flex;
     flex-direction: column;
@@ -420,29 +424,25 @@ button.primary:hover {
 @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes fadeOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-20px); } }
 
-/* --- Responsive Tile Sizes --- */
-@media (max-width: 1200px) {
-    :root {
-        --tile-width: 48px;
-        --tile-height: 65px;
-    }
+/* --- Orientation Warning --- */
+#orientation-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(220, 38, 38, 0.95);
+    color: white;
+    text-align: center;
+    padding: 10px;
+    z-index: 10000;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
-@media (max-width: 900px) {
-    :root {
-        --tile-width: 38px;
-        --tile-height: 52px;
-    }
-}
-@media (max-width: 600px) {
-    :root {
-        --tile-width: 28px;
-        --tile-height: 38px;
-    }
-}
-@media (max-width: 400px) {
-    :root {
-        --tile-width: 22px;
-        --tile-height: 30px;
+
+@media (orientation: portrait) and (max-width: 768px) {
+    #orientation-warning {
+        display: block;
     }
 }
 
