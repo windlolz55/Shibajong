@@ -26,6 +26,12 @@ class MahjongGame {
         this.settlementData = null;
         
         this.turnEpoch = 0;
+        this.actionEvent = null;
+        this.isKongReplacement = false;
+        
+        // 宣告聽牌狀態
+        this.tenpaiStatus = [false, false, false, false];
+        this.tenpaiType = [null, null, null, null]; // 'TIAN', 'DI', 'NORMAL'
         
         this.gameLength = gameLength; // '1_round', '1_match', 'infinite'
         this.roundWind = 0; // 0=East, 1=South, 2=West, 3=North
@@ -107,6 +113,8 @@ class MahjongGame {
         this.discardPool = [];
         this.winner = null;
         this.settlementData = null;
+        this.tenpaiStatus = [false, false, false, false];
+        this.tenpaiType = [null, null, null, null];
         
         for (let i = 0; i < 16; i++) {
             for (let p = 0; p < 4; p++) {
@@ -168,6 +176,42 @@ class MahjongGame {
         return this.gameState === 'PLAYING' && this.currentTurn === playerIndex && this.checkCanHu(playerIndex);
     }
 
+    checkTianDiTingEligibility() {
+        const eligible = [false, false, false, false];
+        const noMelds = this.melds.every(m => m.filter(meld => meld.type !== 'FLOWER').length === 0);
+        if (!noMelds) return eligible;
+
+        for (let i = 0; i < 4; i++) {
+            if (i === this.dealerIndex && this.discardPool.length === 0) {
+                // 莊家打第一張前：天聽
+                eligible[i] = 'TIAN';
+            } else if (i !== this.dealerIndex) {
+                if (this.hands[i].length === 16 && this.discardPool.length === 0) {
+                    // 閒家尚未摸牌前 (莊家剛發完牌)：天聽
+                    eligible[i] = 'TIAN';
+                } else if (this.hands[i].length === 17 && this.discardPool.length < 4) {
+                    // 閒家無人吃碰且摸了第一張牌後 (準備打出第一張牌前)：地聽
+                    eligible[i] = 'DI';
+                }
+            }
+        }
+        return eligible;
+    }
+
+    declareTenpai(playerIndex) {
+        if (this.tenpaiStatus[playerIndex]) return;
+        
+        const eligible = this.checkTianDiTingEligibility();
+        const type = eligible[playerIndex];
+        if (!type) return; // 不符合天聽地聽資格就不允許宣告
+        
+        this.tenpaiStatus[playerIndex] = true;
+        this.tenpaiType[playerIndex] = type;
+        
+        // 觸發新事件
+        this.actionEvent = { playerIndex, type: '聽牌', timestamp: Date.now() };
+    }
+
     discardTile(playerIndex, tileId) {
         if (this.gameState !== 'PLAYING' || this.currentTurn !== playerIndex) return null;
 
@@ -217,16 +261,19 @@ class MahjongGame {
     }
 
     checkCanPong(playerIndex, tile) {
+        if (this.tenpaiStatus[playerIndex]) return false;
         const count = this.hands[playerIndex].filter(t => t.type === tile.type && t.value === tile.value).length;
         return count >= 2;
     }
 
     checkCanKong(playerIndex, tile) {
+        if (this.tenpaiStatus[playerIndex]) return false;
         const count = this.hands[playerIndex].filter(t => t.type === tile.type && t.value === tile.value).length;
         return count >= 3;
     }
 
     getSelfKongOptions(playerIndex) {
+        if (this.tenpaiStatus[playerIndex]) return [];
         let options = [];
         const hand = this.hands[playerIndex];
         const melds = this.melds[playerIndex];
@@ -255,6 +302,7 @@ class MahjongGame {
     }
 
     checkCanChow(playerIndex, tile, fromPlayerIndex) {
+        if (this.tenpaiStatus[playerIndex]) return false;
         if ((fromPlayerIndex + 1) % 4 !== playerIndex) return false;
         if ([TILE_TYPES.WIND, TILE_TYPES.DRAGON, TILE_TYPES.FLOWER].includes(tile.type)) return false;
 
@@ -542,15 +590,13 @@ class MahjongGame {
         const isDealer = playerIndex === this.dealerIndex;
 
         // 0. 天聽 / 地聽
-        if (this.cheatTianTing) {
-            const noMelds = this.melds.every(m => m.length === 0);
-            if (this.discardPool.length === 0) {
-                details.push({ name: '天聽', tai: 8 });
-                totalTai += 8;
-            } else if (this.discardPool.length < 4 && noMelds) {
-                details.push({ name: '地聽', tai: 4 });
-                totalTai += 4;
-            }
+        const tType = this.tenpaiType[playerIndex];
+        if (tType === 'TIAN') {
+            details.push({ name: '天聽', tai: 8 });
+            totalTai += 8;
+        } else if (tType === 'DI') {
+            details.push({ name: '地聽', tai: 4 });
+            totalTai += 4;
         }
 
         // 1. 莊家與連莊
@@ -781,20 +827,28 @@ class MahjongGame {
     forceEndRound(actionType) {
         this.gameState = 'GAME_OVER';
         this.pendingActions = [];
+        const originalTurn = this.currentTurn;
         this.currentTurn = -1;
         if (actionType === 'draw') {
             this.handleDrawGame();
         } else {
             const winner = typeof actionType === 'number' ? actionType : (this.dealerIndex + 1) % 4;
             
-            // 加入一張假牌避免 calculateTai 找不到最後打出的牌而崩潰
-            if (this.discardPool.length === 0) {
-                this.discardPool.push({id: 999, type: '萬', value: 1});
-            }
+            // 取得該玩家聽的牌，確保結算台數時是用正確的牌胡牌
+            const waitTiles = this.getWaitTiles(winner);
+            const wTile = waitTiles.length > 0 ? waitTiles[0] : { type: '萬', value: 1 };
+            const winningTileObj = { id: `CHEAT_WIN_${Date.now()}`, type: wTile.type, value: wTile.value, svgUrl: this.getSvgUrl(wTile.type, wTile.value) };
             
-            // 如果現在輪到贏家，那就是自摸；否則就是胡別人的
-            const isSelfDraw = this.currentTurn === winner;
-            const loser = isSelfDraw ? winner : (this.currentTurn === -1 ? (winner + 1) % 4 : this.currentTurn);
+            // 如果原本輪到贏家，那就是自摸；否則就是胡別人的
+            const isSelfDraw = originalTurn === winner;
+            const loser = isSelfDraw ? winner : (originalTurn === -1 ? (winner + 1) % 4 : originalTurn);
+            
+            // 把這張牌塞進手牌或廢牌堆，讓 handleWinGame 能抓到
+            if (isSelfDraw) {
+                this.hands[winner].push(winningTileObj);
+            } else {
+                this.discardPool.push(winningTileObj);
+            }
             
             this.handleWinGame(winner, loser);
         }
@@ -824,7 +878,14 @@ class MahjongGame {
         
         if (this.gameState === 'PLAYING' || this.gameState === 'WAIT_ACTION') {
             for (let i = 0; i < 4; i++) {
-                waitTilesList[i] = this.getWaitTiles(i);
+                if (this.currentTurn === i && this.hands[i].length % 3 === 2) {
+                    // 如果是該玩家的回合 (手牌有 17 張或 14 張等)，暫時移出最後摸的牌來算聽牌
+                    const tempTile = this.hands[i].pop();
+                    waitTilesList[i] = this.getWaitTiles(i);
+                    this.hands[i].push(tempTile);
+                } else {
+                    waitTilesList[i] = this.getWaitTiles(i);
+                }
             }
         }
 
@@ -846,6 +907,8 @@ class MahjongGame {
             selfDrawFlags: selfDrawFlags,
             selfKongOptions: selfKongOptions,
             waitTiles: waitTilesList,
+            tenpaiStatus: this.tenpaiStatus,
+            isTianDiTingEligible: this.checkTianDiTingEligibility(),
             gameLength: this.gameLength,
             roundWind: this.roundWind,
             isMatchOver: this.isMatchOver,
@@ -1167,8 +1230,7 @@ class MahjongGame {
                 ];
                 break;
             case 'tian_ting':
-                this.cheatTianTing = true;
-                // 發一個平胡聽牌
+                // 給一個會聽牌的手牌，讓玩家可以按宣告聽牌測試
                 newHand = [
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
@@ -1199,7 +1261,7 @@ class MahjongGame {
                     createTile(TILE_TYPES.WIND, '南')
                 ];
                 break;
-            case 'men_feng_tai':
+            case 'men_feng_ke':
                 // 確保擁有自己的門風
                 const myWind = playerIndex === 0 ? '東' : playerIndex === 1 ? '南' : playerIndex === 2 ? '西' : '北';
                 newHand = [
@@ -1211,14 +1273,73 @@ class MahjongGame {
                     createTile(TILE_TYPES.DRAGON, '白') // 單聽白板
                 ];
                 break;
+            case 'quan_feng_ke':
+                // 確保擁有圈風牌刻子
+                const roundWind = this.wind || '東';
+                newHand = [
+                    createTile(TILE_TYPES.WIND, roundWind), createTile(TILE_TYPES.WIND, roundWind), createTile(TILE_TYPES.WIND, roundWind),
+                    createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
+                    createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
+                    createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
+                    createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1),
+                    createTile(TILE_TYPES.DRAGON, '白') // 單聽白板
+                ];
+                break;
+            case 'zheng_hua':
+                // 確保擁有自己的正花
+                const FLOWER_NAMES = ['春', '夏', '秋', '冬', '梅', '蘭', '竹', '菊'];
+                const myFlower = FLOWER_NAMES[playerIndex];
+                newHand = [
+                    createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
+                    createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
+                    createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
+                    createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 2), createTile(TILE_TYPES.DOT, 3),
+                    createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'),
+                    createTile(TILE_TYPES.WIND, '東') // 單吊東風
+                ];
+                newMelds = [
+                    { type: 'FLOWER', tiles: [createTile(TILE_TYPES.FLOWER, myFlower)] }
+                ];
+                break;
+            case 'men_qing':
+                // 門清 / 一摸三 / 不求人
+                newHand = [
+                    createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
+                    createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
+                    createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 2), createTile(TILE_TYPES.DOT, 3),
+                    createTile(TILE_TYPES.DOT, 7), createTile(TILE_TYPES.DOT, 8), createTile(TILE_TYPES.DOT, 9),
+                    createTile(TILE_TYPES.BAM, 4), createTile(TILE_TYPES.BAM, 5),
+                    createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 2)
+                ];
+                // 聽 BAM 3, 6 (沒有任何碰槓吃)
+                break;
+            case 'gang_shang_kai_hua':
+                // 槓上開花 (測槓牌)
+                newHand = [
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
+                    createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
+                    createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 2), createTile(TILE_TYPES.DOT, 3),
+                    createTile(TILE_TYPES.DOT, 7), createTile(TILE_TYPES.DOT, 8), createTile(TILE_TYPES.DOT, 9),
+                    createTile(TILE_TYPES.BAM, 5) // 單吊 BAM 5
+                ];
+                // 放入 5條 (替換牌), 接著是 東風 (讓玩家可以暗槓)
+                this.deck.push(createTile(TILE_TYPES.BAM, 5));
+                this.deck.push(createTile(TILE_TYPES.WIND, '東'));
+                break;
             default:
                 break;
         }
         
         if (newHand.length > 0) {
             this.hands[playerIndex] = newHand;
-            if (this.currentTurn === playerIndex && this.hands[playerIndex].length === 17) {
-                // do nothing, 17 tiles is fine for win calculation
+            if (newMelds.length > 0) {
+                this.melds[playerIndex] = newMelds;
+            }
+            if (this.currentTurn === playerIndex && this.hands[playerIndex].length === 16) {
+                // 如果目前是該玩家的回合，發給他第 17 張牌，確保他能正常打牌或槓牌
+                this.hands[playerIndex].push(this.deck.pop());
+                this.processFlowers(playerIndex);
             }
         }
     }

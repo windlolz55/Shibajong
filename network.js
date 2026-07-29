@@ -264,9 +264,16 @@ class MahjongNetwork {
         if (!this.isHost) return;
 
         if (action === 'discard') {
-            this.game.discardTile(playerIndex, payload.tileId);
+            const tileId = typeof payload === 'string' ? payload : payload.tileId;
+            const tile = this.game.discardTile(playerIndex, tileId);
+            if (!tile) return;
             this.broadcastGameState();
-        } else if (action === 'respond') {
+        } 
+        else if (action === 'declare_tenpai') {
+            this.game.declareTenpai(playerIndex);
+            this.broadcastGameState();
+        }
+        else if (action === 'respond') {
             this.game.respondAction(playerIndex, payload.actionStr, payload.data);
             this.broadcastGameState();
         } else if (action === 'self_draw_hu') {
@@ -321,13 +328,16 @@ class MahjongNetwork {
         
         if (state.gameState === 'PLAYING') {
             const currentPlayer = this.game.players[state.currentTurn];
-            if (currentPlayer.isBot) {
+            const isTenpai = state.tenpaiStatus && state.tenpaiStatus[state.currentTurn];
+            if (currentPlayer.isBot || isTenpai) {
                 state.timerEnabled = true;
                 if (shouldResetTimer) {
-                    this.globalDeadline = Date.now() + this.botSpeed + 1500;
+                    // 聽牌後人類自動打牌的速度可以快一點 (例如 1000ms)，如果是電腦則照原本設定
+                    const delay = isTenpai && !currentPlayer.isBot ? 1000 : (this.botSpeed + 1500);
+                    this.globalDeadline = Date.now() + delay;
                 }
                 state.deadline = this.globalDeadline;
-                state.visualDelay = shouldResetTimer ? 1500 : 0;
+                state.visualDelay = shouldResetTimer ? 1000 : 0;
             } else {
                 const isRecentAction = state.actionEvent && (Date.now() - state.actionEvent.timestamp < 1000);
                 const delay = (shouldResetTimer && isRecentAction) ? 1500 : 0;
@@ -410,14 +420,25 @@ class MahjongNetwork {
                 }, waitTime);
             }
         } 
-        // 如果輪到某人打牌 (人類或電腦皆適用)
         else if (state.gameState === 'PLAYING') {
             this.globalTimer = setTimeout(() => {
+                const currentPlayer = this.game.players[state.currentTurn];
+                const isTenpai = state.tenpaiStatus && state.tenpaiStatus[state.currentTurn];
+                
                 if (state.selfDrawFlags[state.currentTurn]) {
+                    // 聽牌玩家就算自動摸打，如果是自摸也會自動按胡牌
                     this.handlePlayerAction('self_draw_hu', null, state.currentTurn);
                 } else {
-                    const difficulty = this.game.botDifficulty || 'normal';
-                    const actionData = this.game.getBotDiscardAction(state.currentTurn, difficulty);
+                    let actionData;
+                    if (isTenpai && !currentPlayer.isBot) {
+                        // 聽牌的人類玩家，強制打出最後摸進來的那張牌
+                        const hand = state.hands[state.currentTurn];
+                        actionData = hand[hand.length - 1].id;
+                    } else {
+                        // 電腦玩家或未聽牌的玩家(不可能發生)交給 AI 決定
+                        const difficulty = this.game.botDifficulty || 'normal';
+                        actionData = this.game.getBotDiscardAction(state.currentTurn, difficulty);
+                    }
                     this.handlePlayerAction('discard', actionData, state.currentTurn);
                 }
             }, waitTime);

@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.21<br>made by Kittenz
+                        當前版本：v2.39<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -105,28 +105,50 @@
             <div id="admin-panel" style="position: absolute; top: 70px; left: 20px; z-index: 200; display: none; flex-direction: column; gap: 10px;">
                 <select id="cheat-hand-select" style="background:rgba(0,0,0,0.5); color:#10b981; border:1px solid rgba(16,185,129,0.5); padding:8px; border-radius:8px; cursor:pointer; font-weight: bold;">
                     <option value="none">正常發牌</option>
-                    <option value="da_si_xi">大四喜 (16台)</option>
-                    <option value="xiao_si_xi">小四喜 (8台)</option>
-                    <option value="da_san_yuan">大三元 (8台)</option>
-                    <option value="xiao_san_yuan">小三元 (4台)</option>
-                    <option value="wu_an_ke">五暗刻 (8台)</option>
-                    <option value="si_an_ke">四暗刻 (5台)</option>
-                    <option value="san_an_ke">三暗刻 (2台)</option>
-                    <option value="zi_yi_se">字一色 (16台)</option>
-                    <option value="qing_yi_se">清一色 (8台)</option>
-                    <option value="hun_yi_se">混一色 (4台)</option>
-                    <option value="peng_peng_hu">碰碰胡 (4台)</option>
-                    <option value="ping_hu">平胡 (2台)</option>
-                    <option value="quan_qiu_ren">全/半求人 (2/1台)</option>
-                    <option value="dan_ting">單聽 (1台)</option>
-                    <option value="san_yuan_ke">三元刻 (1台)</option>
-                    <option value="men_feng_tai">門風台 (1台)</option>
-                    <option value="hai_di">海底撈月/河底撈魚 (1台)</option>
-                    <option value="tian_ting">天聽 (8台)</option>
+                    <optgroup label="門前牌型">
+                        <option value="quan_qiu_ren">全/半求人 (2/1台)</option>
+                    </optgroup>
+                    <optgroup label="海底牌型">
+                        <option value="hai_di">海底撈月/河底撈魚 (1台)</option>
+                    </optgroup>
+                    <optgroup label="刻子與順子">
+                        <option value="wu_an_ke">五暗刻 (8台)</option>
+                        <option value="si_an_ke">四暗刻 (5台)</option>
+                        <option value="san_an_ke">三暗刻 (2台)</option>
+                        <option value="peng_peng_hu">碰碰胡 (4台)</option>
+                        <option value="ping_hu">平胡 (2台)</option>
+                    </optgroup>
+                    <optgroup label="字牌與花牌">
+                        <option value="da_si_xi">大四喜 (16台)</option>
+                        <option value="xiao_si_xi">小四喜 (8台)</option>
+                        <option value="men_feng_ke">門風刻 (1台)</option>
+                        <option value="quan_feng_ke">圈風刻 (1台)</option>
+                        <option value="zheng_hua">正花 (1台)</option>
+                    </optgroup>
+                    <optgroup label="三元牌型">
+                        <option value="da_san_yuan">大三元 (8台)</option>
+                        <option value="xiao_san_yuan">小三元 (4台)</option>
+                        <option value="san_yuan_ke">三元刻 (1台)</option>
+                    </optgroup>
+                    <optgroup label="一色牌型">
+                        <option value="zi_yi_se">字一色 (16台)</option>
+                        <option value="qing_yi_se">清一色 (8台)</option>
+                        <option value="hun_yi_se">混一色 (4台)</option>
+                    </optgroup>
+                    <optgroup label="聽牌相關">
+                        <option value="dan_ting">單聽 (1台)</option>
+                        <option value="tian_ting">天聽 (8台) / 地聽 (4台)</option>
+                    </optgroup>
+                    <optgroup label="行為與狀態牌型">
+                        <option value="men_qing">門清/一摸三/不求人</option>
+                        <option value="gang_shang_kai_hua">槓上開花 (測槓牌)</option>
+                    </optgroup>
                 </select>
-                <button id="btn-cheat-apply" style="background:#10b981; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🪄 變牌</button>
-                <button id="btn-force-draw" style="background:#f59e0b; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🤝 強制流局</button>
-                <button id="btn-force-win" style="background:#8b5cf6; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🏆 強制胡牌</button>
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
+                    <button id="btn-cheat-apply" style="background:#10b981; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap; width: max-content;">🪄 變牌</button>
+                    <button id="btn-force-draw" style="background:#f59e0b; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap; width: max-content;">🤝 強制流局</button>
+                    <button id="btn-force-win" style="background:#8b5cf6; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap; width: max-content;">🏆 強制胡牌</button>
+                </div>
             </div>
 
             <!-- 右上角控制區 -->
@@ -298,8 +320,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.21"></script>
-    <script src="network.js?v=2.21"></script>
-    <script src="app.js?v=2.21"></script>
+    <script src="game.js?v=2.39"></script>
+    <script src="network.js?v=2.39"></script>
+    <script src="app.js?v=2.39"></script>
 </body>
 </html>

@@ -556,8 +556,8 @@ if (UI.btnForceDraw) {
 if (UI.btnForceWin) {
     UI.btnForceWin.addEventListener('click', () => {
         if (network && window.isAdmin) {
-            if (confirm("確定要強制胡牌嗎？\n(將會以「當前出牌者」為胡牌)")) {
-                const winner = window.currentGameStateObj ? window.currentGameStateObj.currentTurn : network.myPlayerIndex;
+            if (confirm("確定要強制胡牌嗎？\n(將會強制讓「你自己」胡牌)\n若在你的回合按 = 自摸\n若在別人的回合按 = 別人放槍")) {
+                const winner = network.myPlayerIndex;
                 network.sendAction('force_end', winner);
             }
         }
@@ -752,8 +752,12 @@ function updateGameState(state, myIndex) {
                 windIndicator = `<span style="color:#60a5fa; font-weight:bold; margin-left: 5px;">[${windNames[windIndex]}]</span>`;
             }
             
+            // 若玩家已聽牌，顯示提示圖示
+            const tenpaiIndicator = (state.tenpaiStatus && state.tenpaiStatus[targetPlayerIndex]) 
+                ? '<span style="color:#ec4899; font-size:12px; margin-left: 5px;">📢[聽]</span>' 
+                : '';
             UI.infos[pos].innerHTML = `
-                <div>${playerInfo.name}${relationStr}${windIndicator} ${isDealer ? '<span style="color:#ef4444">(莊)</span>' : ''}</div>
+                <div>${playerInfo.name}${relationStr}${windIndicator} ${isDealer ? '<span style="color:#ef4444">(莊)</span>' : ''}${tenpaiIndicator}</div>
                 <div style="font-size: 0.8rem; color: #facc15;">$${state.scores[targetPlayerIndex]}</div>
             `;
         }
@@ -761,6 +765,7 @@ function updateGameState(state, myIndex) {
         const playerArea = UI.infos[pos].parentElement;
         let isMyTurnAndCanSelfDraw = false;
         let mySelfKongOptions = [];
+        let canDeclareTenpai = false;
 
         if (isTurn) {
             playerArea.classList.add('active');
@@ -787,12 +792,24 @@ function updateGameState(state, myIndex) {
             playerArea.classList.remove('active');
         }
 
+        // 獨立檢查是否可以宣告天聽或地聽 (因為閒家的天聽可能在莊家回合宣告)
+        if (state.gameState === 'PLAYING' || state.gameState === 'WAIT_ACTION') {
+            const wt = state.waitTiles && state.waitTiles[myIndex] ? state.waitTiles[myIndex] : [];
+            const hasWaitTiles = wt.length > 0;
+            const notDeclared = !state.tenpaiStatus || !state.tenpaiStatus[myIndex];
+            const isEligible = state.isTianDiTingEligible && state.isTianDiTingEligible[myIndex];
+            
+            if (hasWaitTiles && notDeclared && isEligible) {
+                canDeclareTenpai = true;
+            }
+        }
+
         const isMe = (offset === 0) || (state.gameState === 'GAME_OVER');
         renderHand(pos, handData, isMe, isTurn && offset === 0);
         renderMelds(pos, meldData, isMe);
         
-        // 如果是我，且可以自摸或自摸槓，顯示中央面板
-        if (isMyTurnAndCanSelfDraw || mySelfKongOptions.length > 0) {
+        // 如果是我，且可以自摸、自摸槓或宣告聽牌，顯示中央面板
+        if (isMyTurnAndCanSelfDraw || mySelfKongOptions.length > 0 || canDeclareTenpai) {
             UI.actionBar.classList.remove('hidden');
             UI.actionButtons.innerHTML = '';
             UI.chowOptionsContainer.innerHTML = '';
@@ -803,6 +820,15 @@ function updateGameState(state, myIndex) {
                 btnSelfDraw.addEventListener('click', () => {
                     UI.actionBar.classList.add('hidden');
                     network.sendAction('self_draw_hu', null);
+                });
+            }
+
+            if (canDeclareTenpai) {
+                const btnTenpai = addActionButton('📢 宣告聽牌', 'btn-tenpai', 'TENPAI', false);
+                btnTenpai.style.backgroundColor = '#ec4899';
+                btnTenpai.addEventListener('click', () => {
+                    UI.actionBar.classList.add('hidden');
+                    network.sendAction('declare_tenpai', null);
                 });
             }
 
@@ -818,7 +844,7 @@ function updateGameState(state, myIndex) {
             btnSkip.addEventListener('click', () => {
                 UI.actionBar.classList.add('hidden');
             });
-        } else if (offset === 0 && state.gameState === 'PLAYING' && !isMyTurnAndCanSelfDraw && mySelfKongOptions.length === 0) {
+        } else if (offset === 0 && state.gameState === 'PLAYING' && !isMyTurnAndCanSelfDraw && mySelfKongOptions.length === 0 && !canDeclareTenpai) {
              // 隱藏中央按鈕（如果有殘留的話）
              UI.actionBar.classList.add('hidden');
         }
@@ -1187,8 +1213,15 @@ function handlePendingActions(state, myIndex) {
     } else {
         // 避免在自己回合可以自摸或暗槓時，被這個函數把 actionBar 隱藏
         let canSelfAction = false;
-        if (state.gameState === 'PLAYING' && state.currentTurn === myIndex) {
-            if ((state.selfDrawFlags && state.selfDrawFlags[myIndex]) || (state.selfKongOptions && state.selfKongOptions[myIndex] && state.selfKongOptions[myIndex].length > 0)) {
+        if (state.gameState === 'PLAYING' || state.gameState === 'WAIT_ACTION') {
+            if (state.gameState === 'PLAYING' && state.currentTurn === myIndex) {
+                if ((state.selfDrawFlags && state.selfDrawFlags[myIndex]) || (state.selfKongOptions && state.selfKongOptions[myIndex] && state.selfKongOptions[myIndex].length > 0)) {
+                    canSelfAction = true;
+                }
+            }
+            if (state.waitTiles && state.waitTiles[myIndex] && state.waitTiles[myIndex].length > 0 && 
+                (!state.tenpaiStatus || !state.tenpaiStatus[myIndex]) && 
+                (state.isTianDiTingEligible && state.isTianDiTingEligible[myIndex])) {
                 canSelfAction = true;
             }
         }
