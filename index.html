@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.03<br>made by Kittenz
+                        當前版本：v2.21<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -130,19 +130,19 @@
             </div>
 
             <!-- 右上角控制區 -->
-            <div class="top-right-controls" style="position: absolute; top: 20px; right: 20px; z-index: 200; display: flex; gap: 5px;">
+            <div class="top-right-controls" style="position: absolute; top: 20px; right: 20px; z-index: 200; display: flex;">
                 <select class="control-btn" id="game-speed-select">
                     <option value="0">你是0 (0秒)</option>
                     <option value="3000">極速 (3秒)</option>
                     <option value="5000" selected>標準 (5秒)</option>
                     <option value="10000">慢 (10秒)</option>
                 </select>
-                <select class="control-btn hide-on-mobile" id="bot-difficulty">
+                <select class="control-btn" id="bot-difficulty">
                     <option value="easy">電腦: 簡單</option>
                     <option value="normal" selected>電腦: 一般</option>
                     <option value="hard">電腦: 高手</option>
                 </select>
-                <select class="control-btn hide-on-mobile" id="game-length-select">
+                <select class="control-btn" id="game-length-select">
                     <option value="1_round">一圈 (四局)</option>
                     <option value="1_match">一將 (十六局)</option>
                     <option value="infinite" selected>無限局</option>
@@ -192,21 +192,21 @@
                 
                 <!-- Tenpai Hint (Moved to game-board for global right-side positioning) -->
                 <div id="tenpai-hint" class="tenpai-hint">
-                    <div style="color:#facc15; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid rgba(250,204,21,0.3); padding-bottom: 5px;">聽牌提示</div>
-                    <div id="tenpai-tiles" style="display:flex; gap: 8px; align-items:flex-start; flex-wrap: wrap; justify-content: center; max-width: 250px;">
-                        <span style="color:#94a3b8; font-size: 0.9rem; padding: 10px;">尚未聽牌</span>
+                    <div class="tenpai-title">聽牌提示</div>
+                    <div id="tenpai-tiles" class="tenpai-tiles-container">
+                        <span class="tenpai-empty">尚未聽牌</span>
                     </div>
                 </div>
             </div>
-            <div id="action-popup" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: bold; color: #ef4444; text-shadow: 0px 0px 15px rgba(255,255,255,0.8), 2px 2px 10px rgba(0,0,0,0.8); z-index: 1000; pointer-events: none; opacity: 0; transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);"></div>
+            <div id="action-popup" class="action-popup"></div>
             
             <!-- 台數表 UI -->
             <button class="circle-btn" id="btn-tai-ref" style="bottom: 20px; left: 20px; color: #facc15; border-color: #facc15;">📜</button>
             
             <!-- 表情/文字輪盤 UI -->
-            <button class="circle-btn" id="btn-emote" style="bottom: 20px; left: calc(20px + clamp(40px, 8vw, 60px)); color: #38bdf8; border-color: #38bdf8;">💬</button>
+            <button class="circle-btn" id="btn-emote" style="bottom: calc(30px + clamp(30px, 8vw, 40px)); left: 20px; color: #38bdf8; border-color: #38bdf8;">💬</button>
             
-            <div id="emote-panel" style="position: absolute; bottom: 70px; left: 70px; background: rgba(15,23,42,0.95); border: 1px solid #38bdf8; padding: 10px; border-radius: 12px; display: none; flex-direction: column; gap: 8px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.8); width: 200px;">
+            <div id="emote-panel" style="position: absolute; bottom: calc(40px + clamp(60px, 16vw, 80px)); left: 20px; background: rgba(15,23,42,0.95); border: 1px solid #38bdf8; padding: 10px; border-radius: 12px; display: none; flex-direction: column; gap: 8px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.8); width: 200px;">
                 <button class="btn-emote-option" data-text="要吠來twitch陳景路吠" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">要吠來twitch陳景路吠</button>
                 <button class="btn-emote-option" data-text="沒救 繼續沉淪" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">沒救 繼續沉淪</button>
                 <button class="btn-emote-option" data-text="這把穩了" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">這把穩了</button>
@@ -298,8 +298,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.03"></script>
-    <script src="network.js?v=2.03"></script>
-    <script src="app.js?v=2.03"></script>
+    <script src="game.js?v=2.21"></script>
+    <script src="network.js?v=2.21"></script>
+    <script src="app.js?v=2.21"></script>
 </body>
 </html>

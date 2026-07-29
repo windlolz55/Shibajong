@@ -9,12 +9,11 @@
     --tile-bg: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
     --tile-color: #0f172a;
     
-    /* Fluid Tile Sizes */
-    --my-tile-width: clamp(22px, 5.5vmin, 64px);
-    --my-tile-height: clamp(30px, 7.5vmin, 86px);
-    
-    --tile-width: clamp(16px, 4vmin, 56px);
-    --tile-height: clamp(22px, 5.5vmin, 76px);
+    /* Default Desktop Tile Sizes */
+    --tile-width: 56px;
+    --tile-height: 76px;
+    --my-tile-width: 56px;
+    --my-tile-height: 76px;
 }
 
 * {
@@ -313,8 +312,8 @@ button.primary:hover {
 
 /* Center Area */
 .center-area {
-    width: clamp(250px, 45vw, 500px);
-    height: clamp(250px, 45vh, 400px);
+    width: 500px;
+    height: 400px;
     position: absolute;
     display: flex;
     flex-direction: column;
@@ -431,54 +430,196 @@ button.primary:hover {
 .top-ui-box {
     z-index: 100; position: absolute; top: 20px; left: 20px;
     background: rgba(15, 23, 42, 0.8);
-    padding: clamp(5px, 2vw, 10px) clamp(10px, 3vw, 20px);
+    padding: 10px 20px;
     border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);
-    font-size: clamp(0.7rem, 2vw, 1rem);
 }
 
 .control-btn {
     background: rgba(0,0,0,0.5); color: #fff;
     border: 1px solid rgba(255,255,255,0.2);
-    padding: clamp(4px, 1.5vw, 8px);
+    padding: 8px;
     border-radius: 8px; cursor: pointer;
-    font-size: clamp(0.7rem, 2vw, 1rem);
+    white-space: nowrap;
 }
 .control-btn-red {
     background: #ef4444; font-weight: bold; border: none;
-    padding: clamp(4px, 1.5vw, 8px) clamp(8px, 2vw, 15px);
+    padding: 8px 15px;
+    white-space: nowrap;
 }
+#btn-toggle-mute { padding: 8px 15px; } /* Override for sound button */
+.top-right-controls { gap: 10px; }
 
 .circle-btn {
     position: absolute;
     background: rgba(15,23,42,0.8);
     border: 1px solid;
-    width: clamp(30px, 8vw, 40px);
-    height: clamp(30px, 8vw, 40px);
+    width: 40px;
+    height: 40px;
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+    font-size: 1.2rem;
     cursor: pointer; font-weight: bold; z-index: 100;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 .tenpai-hint {
     display: flex; position: absolute;
-    right: clamp(10px, 3vw, 30px);
-    bottom: clamp(10px, 3vw, 30px);
+    right: 30px;
+    bottom: 30px;
     background: rgba(0,0,0,0.85); border: 1px solid #facc15;
-    padding: clamp(8px, 2vw, 15px); border-radius: 8px; color: #fff; z-index: 100; text-align: center;
+    padding: 15px; border-radius: 8px; color: #fff; z-index: 100; text-align: center;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5); flex-direction: column; gap: 10px;
-    min-width: clamp(100px, 20vw, 150px);
-    max-height: clamp(200px, 40vh, 350px);
+    min-width: 150px;
+    max-height: 350px;
     overflow-y: auto;
 }
 
-@media (max-width: 900px) {
+.action-popup {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 4rem; font-weight: bold; color: #ef4444;
+    text-shadow: 0px 0px 15px rgba(255,255,255,0.8), 2px 2px 10px rgba(0,0,0,0.8);
+    z-index: 1000; pointer-events: none; opacity: 0;
+    transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tenpai-title {
+    color:#facc15; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px;
+    border-bottom: 1px solid rgba(250,204,21,0.3); padding-bottom: 5px;
+}
+.tenpai-tiles-container { display:flex; gap: 8px; align-items:flex-start; flex-wrap: wrap; justify-content: center; max-width: 250px; }
+.tenpai-empty { color:#94a3b8; font-size: 0.9rem; padding: 10px; }
+
+/* Override tile size for tenpai hint to be smaller */
+.tenpai-hint {
+    --tile-width: 24px;
+    --tile-height: 32px;
+}
+
+@media (max-width: 1000px) {
+    :root {
+        --my-tile-width: clamp(22px, 6vmin, 56px);
+        --my-tile-height: clamp(30px, 8vmin, 76px);
+        --tile-width: clamp(12px, 3vmin, 36px);
+        --tile-height: clamp(16px, 4vmin, 48px);
+    }
+    .center-area {
+        width: clamp(200px, 45vw, 500px);
+        height: clamp(200px, 45vh, 400px);
+        --tile-width: clamp(10px, 2.5vmin, 28px);
+        --tile-height: clamp(14px, 3.5vmin, 38px);
+    }
+    
+    .top-ui-box {
+        padding: 4px 6px;
+        font-size: 0.7rem;
+    }
+    .control-btn, .control-btn-red {
+        padding: 2px 4px !important;
+        font-size: 0.6rem !important;
+        height: auto;
+    }
+    #btn-toggle-mute, #btn-back-home {
+        min-width: unset !important;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    }
+    .top-right-controls { 
+        top: 10px !important;
+        right: 10px !important;
+        gap: 4px !important; 
+        flex-wrap: wrap; 
+        justify-content: flex-end;
+        max-width: 70vw;
+    }
+    
+    .circle-btn {
+        width: clamp(30px, 8vw, 40px);
+        height: clamp(30px, 8vw, 40px);
+        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+    }
+    
+    .tenpai-hint {
+        --tile-width: 16px;
+        --tile-height: 22px;
+        right: 10px;
+        bottom: 10px;
+        padding: 4px 6px;
+        min-width: 60px;
+        max-height: 180px;
+    }
+    .tenpai-title { font-size: 0.75rem; padding-bottom: 2px; }
+    .tenpai-empty { font-size: 0.7rem; padding: 2px; }
+    .action-popup { font-size: clamp(2rem, 8vw, 4rem); }
+
     .hide-on-mobile {
         display: none !important;
     }
     .player-info {
-        padding: 2px 8px; font-size: 0.75rem; margin: 2px;
+        padding: 2px 6px; font-size: 0.7rem; margin: 2px;
+        max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+}
+
+@media (max-width: 1000px) and (orientation: landscape) {
+    :root {
+        /* Maximize hand in landscape safely, accounting for the 17th drawn tile gap. */
+        --my-tile-width: clamp(28px, 3.9vw, 56px);
+        --my-tile-height: clamp(38px, 5.5vw, 76px);
+        /* Make opponent tiles much smaller in landscape to prevent any overlap */
+        --tile-width: clamp(12px, 2vw, 30px);
+        --tile-height: clamp(16px, 2.8vw, 40px);
+    }
+}
+
+@media (orientation: portrait) {
+    :root {
+        /* 9 tiles per row max fits 17 tiles exactly into 2 rows (approx 10vw per tile) */
+        --my-tile-width: 10vw;
+        --my-tile-height: 13.5vw;
+        --tile-width: 5vw;
+        --tile-height: 7vw;
+    }
+    .center-area {
+        width: clamp(160px, 40vw, 300px);
+        height: clamp(160px, 40vh, 300px);
+    }
+    .bottom-player .hand {
+        flex-wrap: wrap-reverse;
+        width: 95vw;
+        max-width: 95vw;
+        justify-content: center;
+    }
+    /* Strictly force maximum 9 tiles per row so that 16-17 tiles perfectly form 2 rows */
+    .bottom-player .my-hand .tile {
+        flex: 0 0 calc(95vw / 9 - 4px) !important;
+        width: calc(95vw / 9 - 4px) !important;
+        height: calc((95vw / 9 - 4px) * 1.35) !important;
+    }
+    .top-player .hand {
+        flex-wrap: wrap;
+        max-width: 95vw;
+        justify-content: center;
+    }
+    /* Stack player info and hand vertically to prevent horizontal squeezing of the center table */
+    .left-player, .right-player {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    /* Shift the entire game table up to create breathing room for the bottom UI */
+    .center-area, .left-player, .right-player {
+        top: 32% !important;
+    }
+
+    /* Place UI elements just above the bottom hand */
+    #btn-tai-ref { bottom: 170px !important; }
+    #btn-emote { bottom: 220px !important; }
+    #emote-panel { bottom: 270px !important; }
+    .tenpai-hint { bottom: 170px !important; right: 10px !important; }
 }
 
 /* === Emote Bubble === */
