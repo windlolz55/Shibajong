@@ -175,6 +175,7 @@ class MahjongGame {
         const tileIndex = hand.findIndex(t => t.id === tileId);
         
         if (tileIndex !== -1) {
+            this.isKongReplacement = false; // 清除槓上開花狀態
             const tile = hand.splice(tileIndex, 1)[0];
             this.discardPool.push(tile);
             this.sortHand(hand);
@@ -384,6 +385,7 @@ class MahjongGame {
         this.hands[playerIndex] = hand.filter(t => !(t.id === matches[0].id || t.id === matches[1].id || t.id === matches[2].id));
         this.melds[playerIndex].push({ type: 'KONG', tiles: [matches[0], matches[1], matches[2], tile] });
         this.actionEvent = { playerIndex, type: '槓', tile, timestamp: Date.now() };
+        this.isKongReplacement = true; // 進入槓上開花狀態
         this.drawTile(playerIndex); 
     }
 
@@ -404,7 +406,7 @@ class MahjongGame {
                 this.actionEvent = { playerIndex, type: '加槓', tile, timestamp: Date.now() };
             }
         }
-        // Self kong lets you draw a replacement tile from the back (or deck)
+        this.isKongReplacement = true; // 進入槓上開花狀態
         this.drawTile(playerIndex);
     }
     executeChow(playerIndex, tile, payloadTiles) {
@@ -539,10 +541,16 @@ class MahjongGame {
         const melds = this.melds[playerIndex].filter(m => m.type !== 'FLOWER');
         const isDealer = playerIndex === this.dealerIndex;
 
-        // 0. 天聽
+        // 0. 天聽 / 地聽
         if (this.cheatTianTing) {
-            details.push({ name: '天聽', tai: 8 });
-            totalTai += 8;
+            const noMelds = this.melds.every(m => m.length === 0);
+            if (this.discardPool.length === 0) {
+                details.push({ name: '天聽', tai: 8 });
+                totalTai += 8;
+            } else if (this.discardPool.length < 4 && noMelds) {
+                details.push({ name: '地聽', tai: 4 });
+                totalTai += 4;
+            }
         }
 
         // 1. 莊家與連莊
@@ -582,6 +590,12 @@ class MahjongGame {
                 details.push({ name: '全求人', tai: 2 });
                 totalTai += 2;
             }
+        }
+        
+        // 槓上開花
+        if (isSelfDraw && this.isKongReplacement) {
+            details.push({ name: '槓上開花', tai: 1 });
+            totalTai += 1;
         }
 
         // 3. 獨聽
@@ -679,10 +693,31 @@ class MahjongGame {
             totalTai += 8;
         }
         
-        // 門風台與圈風台 (如果不是大四喜，通常小四喜也會疊加門風/圈風台，這裡獨立判斷給台)
+        // 門風刻與圈風刻 (如果不是大四喜，通常小四喜也會疊加門風/圈風刻，這裡獨立判斷給台)
         if (windPongs < 4) {
-            if (hasSeatWind) { details.push({ name: '門風台', tai: 1 }); totalTai += 1; }
-            if (hasRoundWind) { details.push({ name: '圈風台', tai: 1 }); totalTai += 1; }
+            if (hasSeatWind) { details.push({ name: '門風刻', tai: 1 }); totalTai += 1; }
+            if (hasRoundWind) { details.push({ name: '圈風刻', tai: 1 }); totalTai += 1; }
+        }
+        
+        // 三元牌
+        let dragonPongs = 0;
+        let dragonPairs = 0;
+        
+        DRAGON_NAMES.forEach(d => {
+            const c = counts[`${TILE_TYPES.DRAGON}_${d}`] || 0;
+            if (c >= 3) dragonPongs++;
+            else if (c === 2) dragonPairs++;
+        });
+        
+        if (dragonPongs === 3) {
+            details.push({ name: '大三元', tai: 8 });
+            totalTai += 8;
+        } else if (dragonPongs === 2 && dragonPairs === 1) {
+            details.push({ name: '小三元', tai: 4 });
+            totalTai += 4;
+        } else if (dragonPongs > 0) {
+            details.push({ name: '三元刻', tai: dragonPongs });
+            totalTai += dragonPongs;
         }
         
         // 6. 一色台
@@ -979,7 +1014,7 @@ class MahjongGame {
         this.hands[playerIndex] = [];
         
         const createTile = (type, value) => {
-            return { id: `CHEAT_${Math.random().toString(36).substring(7)}`, type, value };
+            return { id: `CHEAT_${Math.random().toString(36).substring(7)}`, type, value, svgUrl: this.getSvgUrl(type, value) };
         };
         
         let newHand = [];

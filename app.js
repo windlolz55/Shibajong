@@ -30,6 +30,10 @@ const UI = {
     btnToggleMute: document.getElementById('btn-toggle-mute'),
     adminPanel: document.getElementById('admin-panel'),
     btnAdminLogin: document.getElementById('btn-admin-login'),
+    adminStatus: document.getElementById('admin-status'),
+    btnTaiRef: document.getElementById('btn-tai-ref'),
+    btnCloseTai: document.getElementById('btn-close-tai'),
+    taiRefPanel: document.getElementById('tai-ref-panel'),
     deckCount: document.getElementById('deck-count'),
     turnText: document.getElementById('turn-text'),
     turnTimer: document.getElementById('turn-timer'),
@@ -87,11 +91,23 @@ function toggleMute() {
 
 // --- Socket / Room Logic ---
 
+if (UI.btnTaiRef) {
+    UI.btnTaiRef.addEventListener('click', () => {
+        UI.taiRefPanel.style.display = UI.taiRefPanel.style.display === 'none' ? 'block' : 'none';
+    });
+}
+if (UI.btnCloseTai) {
+    UI.btnCloseTai.addEventListener('click', () => {
+        UI.taiRefPanel.style.display = 'none';
+    });
+}
+
 if (UI.btnAdminLogin) {
     UI.btnAdminLogin.addEventListener('click', () => {
         const pw = prompt('請輸入管理員密碼：');
         if (pw === 'kittenz') {
             window.isAdmin = true;
+            if (UI.adminStatus) UI.adminStatus.style.display = 'block';
             alert('管理員模式已啟用，您建立房間後將可使用變牌與強制胡牌功能。');
             if (network && network.isHost && UI.adminPanel) {
                 UI.adminPanel.style.display = 'flex';
@@ -807,28 +823,34 @@ function updateGameState(state, myIndex) {
 
 const TAI_EXPLANATIONS = {
     '莊家': '身為莊家，無論胡牌或放槍都會多計1台。',
-    '自摸': '自己摸到胡牌的那張牌。',
-    '門清': '沒有任何明吃、明碰、明槓，全憑自己摸牌。',
-    '門清一摸三': '在門清的狀態下自摸，直接計3台（包含門清與自摸）。',
-    '全求人': '手牌全部吃、碰落地，只剩一張牌單吊，並且胡別人的牌。',
-    '半求人': '手牌全部吃、碰落地，只剩一張牌單吊，並且自摸。',
-    '獨聽': '手牌只能聽唯一一張牌（例如中洞、邊張、單吊）。',
-    '海底撈月': '摸到牌堆最後一張牌並自摸胡牌。',
-    '河底撈魚': '別人打出牌堆最後一張牌，你胡牌。',
-    '三元刻': '擁有紅中、發財或白板的刻子，每組1台。',
-    '小三元': '擁有兩組三元牌的刻子，加上一對三元牌的眼睛。',
-    '大三元': '擁有紅中、發財、白板各一組刻子。',
-    '門風台': '擁有與自己座位相同風向（東南西北）的刻子。',
-    '小四喜': '擁有三組風牌的刻子，加上一對風牌的眼睛。',
-    '大四喜': '擁有東、南、西、北風四組刻子。',
-    '平胡': '沒有字牌，沒有任何刻子，無明碰明槓，且非獨聽。',
-    '碰碰胡': '手牌全部由刻子（碰、暗刻）和一對眼睛組成，沒有順子。',
-    '三暗刻': '手牌中有三組自己摸到的刻子（非碰牌）。',
-    '四暗刻': '手牌中有四組自己摸到的刻子。',
-    '五暗刻': '手牌中有五組自己摸到的刻子。',
-    '混一色': '手牌只有一種花色（萬/筒/條）再加上字牌。',
-    '清一色': '手牌完全只有一種花色（萬/筒/條），且沒有字牌。',
-    '字一色': '手牌全部都是字牌。'
+    '自摸': '自己摸到胡牌的牌',
+    '門清': '全程不吃、碰、明槓',
+    '門清一摸三': '門清+自摸 (含不求人)',
+    '全求人': '手牌全吃碰槓，剩1張單吊胡他人',
+    '半求人': '手牌全吃碰槓，剩1張單吊自摸',
+    '不求人': '門清狀態下自摸',
+    '海底撈月': '全場剩16張內自摸',
+    '河底撈魚': '全場剩16張內胡別人',
+    '槓上開花': '槓牌後補的牌剛好自摸',
+    '五暗刻': '5副非碰出的暗刻(含暗槓)',
+    '四暗刻': '4副非碰出的暗刻(含暗槓)',
+    '三暗刻': '3副非碰出的暗刻(含暗槓)',
+    '碰碰胡': '全是刻子與一個對子',
+    '平胡': '全是順子、無字牌、無花牌、非單聽',
+    '大四喜': '東南西北 4 組刻子',
+    '小四喜': '東南西北 3 組刻子+1 組風牌對子',
+    '門風刻': '擁有自己座位的風牌刻子',
+    '圈風刻': '擁有當前風圈的風牌刻子',
+    '正花': '座位對應的春夏秋冬/梅蘭竹菊',
+    '大三元': '中發白三種刻子',
+    '小三元': '中發白兩種刻子+一種對子',
+    '三元刻': '有中發白任一組刻子',
+    '字一色': '全為字牌',
+    '清一色': '全為同一花色且無字牌',
+    '混一色': '同一花色加上字牌',
+    '單聽': '僅聽單一牌張',
+    '天聽': '起手配牌完畢即宣告聽牌',
+    '地聽': '無人吃碰槓下，於第一巡宣告聽牌'
 };
 
 function showSettlement(state, myIndex) {
@@ -902,7 +924,8 @@ function showSettlement(state, myIndex) {
                     const explain = TAI_EXPLANATIONS[d.name] || '無特別說明';
                     const taiStr = d.tai > 0 ? ` (${d.tai}台)` : '';
                     const baseName = d.name.split(' (')[0]; // 若有附加說明，例如正花 (春)
-                    const explainFinal = TAI_EXPLANATIONS[baseName] || explain;
+                    let explainFinal = TAI_EXPLANATIONS[baseName] || explain;
+                    if (baseName.startsWith('連') && baseName.includes('拉')) explainFinal = '每連一次加2台';
                     return `<span class="tai-tooltip">${d.name}${taiStr}<span class="tai-tooltip-text">${explainFinal}</span></span>`;
                 }).join('、');
             }

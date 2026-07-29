@@ -13,6 +13,8 @@
     <div id="notification-container" class="notification-container"></div>
     <div id="app">
         <div id="lobby-screen" class="screen">
+            <!-- 管理員狀態 -->
+            <div id="admin-status" style="position: absolute; top: 20px; left: 20px; color: #10b981; font-size: 16px; font-weight: bold; display: none; z-index: 1000; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">👑 管理員模式</div>
             <!-- 左右兩側的 GIF 區塊與春聯 -->
             <div style="position: absolute; right: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
                 <img src="left.gif" alt="Left GIF" style="height: 380px; max-height: 45vh; max-width: 20vw; width: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
@@ -60,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v1.81<br>made by Kittenz
+                        當前版本：v1.85<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -197,6 +199,82 @@
                 </div>
             </div>
             <div id="action-popup" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: bold; color: #ef4444; text-shadow: 0px 0px 15px rgba(255,255,255,0.8), 2px 2px 10px rgba(0,0,0,0.8); z-index: 1000; pointer-events: none; opacity: 0; transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);"></div>
+            
+            <!-- 台數表 UI -->
+            <button id="btn-tai-ref" style="position: absolute; bottom: 20px; left: 20px; background: rgba(15,23,42,0.8); color: #facc15; border: 1px solid #facc15; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">📜</button>
+            
+            <div id="tai-ref-panel" style="position: absolute; bottom: 70px; left: 20px; background: rgba(0,0,0,0.9); border: 1px solid #475569; padding: 15px; border-radius: 8px; color: #fff; z-index: 200; width: 320px; max-height: 60vh; overflow-y: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.8); font-size: 0.85rem; line-height: 1.4;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 10px; width: 100%;">
+                    <h3 style="margin:0; color:#38bdf8; font-size: 1.1rem; white-space: nowrap; text-align: left; flex-grow: 1;">麻將台數表</h3>
+                    <button id="btn-close-tai" style="background:transparent; border:none; color:#cbd5e1; cursor:pointer; font-size: 1.2rem; padding: 0 5px; margin: 0; display: flex; justify-content: flex-end;">✖</button>
+                </div>
+                
+                <h4 style="color:#facc15; margin:5px 0;">💡 基本牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>莊家 (1台)</b> - 身為莊家，無論胡牌或放槍都會多計1台。</li>
+                    <li><b>連莊</b> (每連一次加2台)</li>
+                    <li><b>自摸 (1台)</b> - 自己摸到胡牌的牌</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 門前牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>門清 (1台)</b> - 全程不吃、碰、明槓</li>
+                    <li><b>門清一摸三 (3台)</b> - 門清+自摸 (含不求人)</li>
+                    <li><b>全求人 (2台)</b> - 手牌全吃碰槓，剩1張單吊胡他人</li>
+                    <li><b>半求人 (1台)</b> - 手牌全吃碰槓，剩1張單吊自摸</li>
+                    <li><b>不求人 (1台)</b> - 門清狀態下自摸</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 海底牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>海底撈月 (1台)</b> - 全場剩16張內自摸</li>
+                    <li><b>河底撈魚 (1台)</b> - 全場剩16張內胡別人</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 槓牌牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>槓上開花 (1台)</b> - 槓牌後補的牌剛好自摸</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 刻子與順子</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>五暗刻 (8台)</b> - 5副非碰出的暗刻(含暗槓)</li>
+                    <li><b>四暗刻 (5台)</b> - 4副非碰出的暗刻(含暗槓)</li>
+                    <li><b>三暗刻 (2台)</b> - 3副非碰出的暗刻(含暗槓)</li>
+                    <li><b>碰碰胡 (4台)</b> - 全是刻子與一個對子</li>
+                    <li><b>平胡 (2台)</b> - 全是順子、無字牌、無花牌、非單聽</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 字牌與花牌</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>大四喜 (16台)</b> - 東南西北 4 組刻子</li>
+                    <li><b>小四喜 (8台)</b> - 東南西北 3 組刻子+1 組風牌對子</li>
+                    <li><b>門風刻 (1台)</b> - 擁有自己座位的風牌刻子</li>
+                    <li><b>圈風刻 (1台)</b> - 擁有當前風圈的風牌刻子</li>
+                    <li><b>正花 (每朵 1台)</b> - 座位對應的春夏秋冬/梅蘭竹菊</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 三元牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>大三元 (8台)</b> - 中發白三種刻子</li>
+                    <li><b>小三元 (4台)</b> - 中發白兩種刻子+一種對子</li>
+                    <li><b>三元刻 (每組 1台)</b> - 有中發白任一組刻子</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 一色牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>字一色 (16台)</b> - 全為字牌</li>
+                    <li><b>清一色 (8台)</b> - 全為同一花色且無字牌</li>
+                    <li><b>混一色 (4台)</b> - 同一花色加上字牌</li>
+                </ul>
+
+                <h4 style="color:#facc15; margin:5px 0;">💡 聽牌牌型</h4>
+                <ul style="margin:5px 0 10px 0; padding-left: 20px;">
+                    <li><b>單聽 (1台)</b> - 僅聽單一牌張</li>
+                    <li><b>天聽 (8台)</b> - 起手配牌完畢即宣告聽牌</li>
+                    <li><b>地聽 (4台)</b> - 無人吃碰槓下，於第一巡宣告聽牌</li>
+                </ul>
+            </div>
         </div>
         
         <div id="settlement-screen" class="screen hidden">
@@ -210,8 +288,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=1.81"></script>
-    <script src="network.js?v=1.81"></script>
-    <script src="app.js?v=1.81"></script>
+    <script src="game.js?v=1.85"></script>
+    <script src="network.js?v=1.85"></script>
+    <script src="app.js?v=1.85"></script>
 </body>
 </html>
