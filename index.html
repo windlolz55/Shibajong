@@ -20,19 +20,19 @@
             <!-- 管理員狀態 -->
             <div id="admin-status" style="position: absolute; top: 20px; left: 20px; color: #10b981; font-size: 16px; font-weight: bold; display: none; z-index: 1000; text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">👑 管理員模式</div>
             <!-- 左右兩側的 GIF 區塊與春聯 -->
-            <div style="position: absolute; right: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
+            <div class="hide-on-mobile" style="position: absolute; right: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
                 <img src="left.gif" alt="Left GIF" style="height: 380px; max-height: 45vh; max-width: 20vw; width: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
                 <div style="background-color: #dc2626; color: #111; font-family: 'Ma Shan Zheng', cursive; font-size: 2.8rem; padding: 25px 10px; border-radius: 4px; border: 2px solid #111; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 15px; box-shadow: 3px 3px 10px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; font-weight: bold; user-select: none;">我全都要</div>
             </div>
             
-            <div style="position: absolute; left: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
+            <div class="hide-on-mobile" style="position: absolute; left: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
                 <div style="background-color: #dc2626; color: #111; font-family: 'Ma Shan Zheng', cursive; font-size: 2.8rem; padding: 25px 10px; border-radius: 4px; border: 2px solid #111; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 15px; box-shadow: 3px 3px 10px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; font-weight: bold; user-select: none;">怎會如此</div>
                 <img src="right.gif" alt="Right GIF" style="height: 380px; max-height: 45vh; max-width: 20vw; width: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
             </div>
 
-            <div class="card" style="width: 100%; max-width: 600px; z-index: 10;">
-                <h1 style="font-family: 'Ma Shan Zheng', cursive; font-size: 5rem; margin-bottom: 0; background: #dc2626; -webkit-background-clip: initial; -webkit-text-fill-color: #111; color: #111; text-shadow: none; padding: 10px 40px; border-radius: 8px; border: 3px solid #111; display: inline-block; box-shadow: 4px 4px 15px rgba(0,0,0,0.5); letter-spacing: 15px;">喜八路麻</h1>
-                <h2 style="font-family: 'Ma Shan Zheng', cursive; font-size: 1.5rem; color: #cbd5e1; margin-top: 0.5rem; margin-bottom: 2.5rem; letter-spacing: 3px; font-weight: normal;">台灣十六張麻將</h2>
+            <div class="card" style="width: 100%; max-width: 600px; z-index: 10; padding: clamp(1rem, 4vw, 2.5rem);">
+                <h1 style="font-family: 'Ma Shan Zheng', cursive; font-size: clamp(2.5rem, 8vw, 5rem); margin-bottom: 0; background: #dc2626; -webkit-background-clip: initial; -webkit-text-fill-color: #111; color: #111; text-shadow: none; padding: clamp(5px, 2vw, 10px) clamp(10px, 4vw, 40px); border-radius: 8px; border: 3px solid #111; display: inline-block; box-shadow: 4px 4px 15px rgba(0,0,0,0.5); letter-spacing: clamp(5px, 2vw, 15px);">喜八路麻</h1>
+                <h2 style="font-family: 'Ma Shan Zheng', cursive; font-size: clamp(1rem, 4vw, 1.5rem); color: #cbd5e1; margin-top: 0.5rem; margin-bottom: 2.5rem; letter-spacing: 3px; font-weight: normal;">台灣十六張麻將</h2>
                 <div style="margin-bottom: 20px; text-align: left;">
                     <label for="player-name" style="display:block; margin-bottom:5px; color:#cbd5e1; font-size:0.9rem;">玩家名字:</label>
                     <input type="text" id="player-name" placeholder="輸入你的名字" style="width: 100%;">
@@ -66,7 +66,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.00<br>made by Kittenz
+                        當前版本：v2.02<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -302,8 +302,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.00"></script>
-    <script src="network.js?v=2.00"></script>
-    <script src="app.js?v=2.00"></script>
+    <script src="game.js?v=2.02"></script>
+    <script src="network.js?v=2.02"></script>
+    <script src="app.js?v=2.02"></script>
 </body>
 </html>
