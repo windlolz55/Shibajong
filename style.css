@@ -213,6 +213,8 @@ button.primary:hover {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    user-select: none;
+    padding: 2px;
 }
 .bottom-player { bottom: 20px; left: 50%; transform: translateX(-50%); }
 .top-player { top: 20px; left: 50%; transform: translateX(-50%); }
@@ -443,3 +445,38 @@ button.primary:hover {
         --tile-height: 30px;
     }
 }
+
+/* === Emote Bubble === */
+.emote-bubble {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95);
+    color: #1e293b;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    z-index: 500;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.emote-bubble::after {
+    content: "";
+    position: absolute;
+    top: var(--tail-top, 100%);
+    left: 50%;
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: var(--tail-border, rgba(255, 255, 255, 0.95) transparent transparent transparent);
+}
+
+.emote-bubble.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+

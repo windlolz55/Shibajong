@@ -34,6 +34,8 @@ const UI = {
     btnTaiRef: document.getElementById('btn-tai-ref'),
     btnCloseTai: document.getElementById('btn-close-tai'),
     taiRefPanel: document.getElementById('tai-ref-panel'),
+    btnEmote: document.getElementById('btn-emote'),
+    emotePanel: document.getElementById('emote-panel'),
     deckCount: document.getElementById('deck-count'),
     turnText: document.getElementById('turn-text'),
     turnTimer: document.getElementById('turn-timer'),
@@ -94,6 +96,32 @@ function toggleMute() {
 if (UI.btnTaiRef) {
     UI.btnTaiRef.addEventListener('click', () => {
         UI.taiRefPanel.style.display = UI.taiRefPanel.style.display === 'none' ? 'block' : 'none';
+        if (UI.emotePanel) UI.emotePanel.style.display = 'none'; // 互斥開啟
+    });
+}
+let myLastEmoteTime = 0;
+
+if (UI.btnEmote) {
+    UI.btnEmote.addEventListener('click', () => {
+        UI.emotePanel.style.display = UI.emotePanel.style.display === 'none' ? 'grid' : 'none';
+        if (UI.taiRefPanel) UI.taiRefPanel.style.display = 'none';
+    });
+}
+if (UI.emotePanel) {
+    UI.emotePanel.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            const now = Date.now();
+            if (now - myLastEmoteTime < 5000) {
+                const timeLeft = Math.ceil((5000 - (now - myLastEmoteTime)) / 1000);
+                if (window.showNotification) window.showNotification(`太快了！請等待 ${timeLeft} 秒`, true);
+                return;
+            }
+            myLastEmoteTime = now;
+            
+            const text = e.target.getAttribute('data-text');
+            network.sendAction('emote', { text: text });
+            UI.emotePanel.style.display = 'none';
+        }
     });
 }
 if (UI.btnCloseTai) {
@@ -102,14 +130,107 @@ if (UI.btnCloseTai) {
     });
 }
 
+window.showEmote = function(playerIndex, text) {
+    if (!network) {
+        if (window.showNotification) window.showNotification("DEBUG: NO NETWORK");
+        return;
+    }
+    
+    let myIndex = network.myPlayerIndex;
+    if (myIndex === undefined || myIndex === -1) myIndex = 0;
+    
+    // Explicitly parse to numbers just in case
+    const offset = (Number(playerIndex) - Number(myIndex) + 4) % 4;
+    const positions = ['bottom', 'right', 'top', 'left'];
+    const position = positions[offset];
+    
+    const infoId = `info-${position}`;
+    const infoEl = document.getElementById(infoId);
+    
+    // Create speech bubble
+    const bubble = document.createElement('div');
+    bubble.className = 'emote-bubble';
+    bubble.innerText = text;
+    bubble.style.zIndex = '99999'; // FORCE ON TOP OF EVERYTHING
+    bubble.style.border = '2px solid red'; // DEBUG BORDER
+    
+    // Append to document.body to avoid ALL container issues
+    document.body.appendChild(bubble);
+    
+    // Force reflow
+    void bubble.offsetWidth;
+    
+    if (infoEl) {
+        // Use fixed positioning based on the bounding rect of infoEl
+        const rect = infoEl.getBoundingClientRect();
+        bubble.style.position = 'fixed';
+        
+        let topPos = rect.top - bubble.offsetHeight - 10;
+        
+        // If it goes off the top of the screen (top player), place it BELOW the player info
+        if (topPos < 10) {
+            topPos = rect.bottom + 10;
+            bubble.style.setProperty('--tail-top', '-6px');
+            bubble.style.setProperty('--tail-border', 'transparent transparent rgba(255, 255, 255, 0.95) transparent');
+        }
+        
+        bubble.style.top = topPos + 'px';
+        
+        if (position === 'left') {
+            bubble.style.left = rect.left + 'px';
+            bubble.style.transform = 'translateY(10px)';
+        } else if (position === 'right') {
+            bubble.style.left = 'auto';
+            bubble.style.right = (window.innerWidth - rect.right) + 'px';
+            bubble.style.transform = 'translateY(10px)';
+        } else {
+            bubble.style.left = (rect.left + rect.width / 2) + 'px';
+        }
+    } else {
+        // Ultimate fallback
+        bubble.style.position = 'fixed';
+        bubble.style.top = '50%';
+        bubble.style.left = '50%';
+        bubble.style.transform = 'translate(-50%, -50%)';
+    }
+    
+    bubble.classList.add('show');
+    if (infoEl && (position === 'left' || position === 'right')) {
+        bubble.style.transform = 'translateY(0)'; // override show transform
+    } else if (!infoEl) {
+        bubble.style.transform = 'translate(-50%, -50%) scale(1.2)';
+    }
+    
+    // Play TTS or custom Voice if sound is not muted
+    if (typeof isMuted !== 'undefined' && !isMuted) {
+        if (text === '度！') {
+            const audio = new Audio('du.mp3');
+            audio.play().catch(e => console.error("Audio play failed:", e));
+        } else if (window.speechSynthesis) {
+            window.speechSynthesis.cancel(); // Clear any previous unplayed voices to prevent overlap/spam
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.1; // Slightly faster
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+    
+    setTimeout(() => {
+        bubble.classList.remove('show');
+        setTimeout(() => {
+            if (bubble.parentElement) bubble.parentElement.removeChild(bubble);
+        }, 300);
+    }, 3000);
+};
+
 if (UI.btnAdminLogin) {
     UI.btnAdminLogin.addEventListener('click', () => {
         const pw = prompt('請輸入管理員密碼：');
         if (pw === 'kittenz') {
             window.isAdmin = true;
             if (UI.adminStatus) UI.adminStatus.style.display = 'block';
-            alert('管理員模式已啟用，您建立房間後將可使用變牌與強制胡牌功能。');
-            if (network && network.isHost && UI.adminPanel) {
+            alert('管理員模式已啟用，您建立或加入房間即可使用強制胡牌、變牌等功能。');
+            if (network && UI.adminPanel) {
                 UI.adminPanel.style.display = 'flex';
             }
         } else if (pw !== null) {
@@ -424,8 +545,8 @@ if (UI.btnBackHome) {
 
 if (UI.btnForceDraw) {
     UI.btnForceDraw.addEventListener('click', () => {
-        if (network && network.isHost) {
-            if (confirm("確定要強制結束這局（流局 / 連莊）嗎？")) {
+        if (network && window.isAdmin) {
+            if (confirm("確定要強制結束並流局嗎？")) {
                 network.sendAction('force_end', 'draw');
             }
         }
@@ -434,8 +555,8 @@ if (UI.btnForceDraw) {
 
 if (UI.btnForceWin) {
     UI.btnForceWin.addEventListener('click', () => {
-        if (network && network.isHost) {
-            if (confirm("確定要強制胡牌嗎？\n(將會由「當前回合」的玩家直接胡牌)")) {
+        if (network && window.isAdmin) {
+            if (confirm("確定要強制胡牌嗎？\n(將會以「當前出牌者」為胡牌)")) {
                 const winner = window.currentGameStateObj ? window.currentGameStateObj.currentTurn : network.myPlayerIndex;
                 network.sendAction('force_end', winner);
             }
@@ -447,11 +568,9 @@ const cheatHandSelect = document.getElementById('cheat-hand-select');
 const btnCheatApply = document.getElementById('btn-cheat-apply');
 if (btnCheatApply && cheatHandSelect) {
     btnCheatApply.addEventListener('click', () => {
-        if (network && network.isHost && network.game) {
+        if (network && window.isAdmin) {
             const cheatType = cheatHandSelect.value;
-            const myIndex = network.myPlayerIndex;
-            network.game.applyCheatHand(myIndex, cheatType);
-            network.broadcastGameState();
+            network.sendAction('apply_cheat', { type: cheatType });
             if (window.showNotification) showNotification('已變牌成功！請點擊強制胡牌測試結算。');
         }
     });
@@ -475,11 +594,10 @@ function startGameUI() {
             if (gameLengthSelect && network.game) {
                 gameLengthSelect.value = network.game.gameLength;
             }
-            if (UI.adminPanel) {
-                UI.adminPanel.style.display = window.isAdmin ? 'flex' : 'none';
-            }
-        } else {
-            if (UI.adminPanel) UI.adminPanel.style.display = 'none';
+        }
+        
+        if (UI.adminPanel) {
+            UI.adminPanel.style.display = window.isAdmin ? 'flex' : 'none';
         }
     }
     if (network.isHost) {
@@ -1132,3 +1250,31 @@ if (disconnectMsg) {
     sessionStorage.removeItem('disconnectMsg');
     if (window.showNotification) showNotification(disconnectMsg, true);
 }
+// --- Global Tooltip Boundary Fix ---
+document.addEventListener('mouseover', function(e) {
+    const tooltip = e.target.closest('.tai-tooltip');
+    if (tooltip) {
+        const text = tooltip.querySelector('.tai-tooltip-text');
+        if (text) {
+            // Reset to natural center position
+            text.style.left = '50%';
+            text.style.right = 'auto';
+            text.style.transform = 'translateX(-50%)';
+            
+            // Wait for next frame to measure
+            requestAnimationFrame(() => {
+                const rect = text.getBoundingClientRect();
+                if (rect.left < 10) {
+                    text.style.left = '0';
+                    text.style.right = 'auto';
+                    text.style.transform = 'translateX(0)';
+                } else if (rect.right > window.innerWidth - 10) {
+                    text.style.left = 'auto';
+                    text.style.right = '0';
+                    text.style.transform = 'translateX(0)';
+                }
+            });
+        }
+    }
+});
+

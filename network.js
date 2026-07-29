@@ -1,4 +1,4 @@
-﻿// --- 網路連線邏輯 (network.js) ---
+// --- 網路連線邏輯 (network.js) ---
 
 class MahjongNetwork {
     constructor(onStateUpdate, onPlayerListUpdate, onGameStart, botSpeed = 5000) {
@@ -198,6 +198,9 @@ class MahjongNetwork {
             else if (data.type === 'game_state') {
                 this.onStateUpdate(data.state, this.myPlayerIndex);
             }
+            else if (data.type === 'emote_event') {
+                if (window.showEmote) window.showEmote(data.playerIndex, data.text);
+            }
             else if (data.type === 'error') {
                 sessionStorage.setItem('disconnectMsg', '加入失敗：' + data.message);
                 conn.close(); // 主動關閉
@@ -282,6 +285,12 @@ class MahjongNetwork {
                 this.game.forceEndRound(payload);
                 this.broadcastGameState();
             }
+        } else if (action === 'apply_cheat') {
+            this.game.applyCheatHand(playerIndex, payload.type);
+            this.broadcastGameState();
+        } else if (action === 'emote') {
+            this.broadcast({ type: 'emote_event', playerIndex: playerIndex, text: payload.text });
+            if (window.showEmote) window.showEmote(playerIndex, payload.text);
         }
     }
 

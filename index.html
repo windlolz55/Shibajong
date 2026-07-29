@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v1.85<br>made by Kittenz
+                        當前版本：v1.99<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -203,6 +203,16 @@
             <!-- 台數表 UI -->
             <button id="btn-tai-ref" style="position: absolute; bottom: 20px; left: 20px; background: rgba(15,23,42,0.8); color: #facc15; border: 1px solid #facc15; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">📜</button>
             
+            <!-- 表情/文字輪盤 UI -->
+            <button id="btn-emote" style="position: absolute; bottom: 20px; left: 70px; background: rgba(15,23,42,0.8); color: #38bdf8; border: 1px solid #38bdf8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">💬</button>
+            
+            <div id="emote-panel" style="position: absolute; bottom: 70px; left: 70px; background: rgba(15,23,42,0.95); border: 1px solid #38bdf8; padding: 10px; border-radius: 12px; display: none; flex-direction: column; gap: 8px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.8); width: 200px;">
+                <button class="btn-emote-option" data-text="要吠來twitch陳景路吠" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">要吠來twitch陳景路吠</button>
+                <button class="btn-emote-option" data-text="沒救 繼續沉淪" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">沒救 繼續沉淪</button>
+                <button class="btn-emote-option" data-text="這把穩了" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">這把穩了</button>
+                <button class="btn-emote-option" data-text="度！" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">度！</button>
+            </div>
+            
             <div id="tai-ref-panel" style="position: absolute; bottom: 70px; left: 20px; background: rgba(0,0,0,0.9); border: 1px solid #475569; padding: 15px; border-radius: 8px; color: #fff; z-index: 200; width: 320px; max-height: 60vh; overflow-y: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.8); font-size: 0.85rem; line-height: 1.4;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 10px; width: 100%;">
                     <h3 style="margin:0; color:#38bdf8; font-size: 1.1rem; white-space: nowrap; text-align: left; flex-grow: 1;">麻將台數表</h3>
@@ -288,8 +298,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=1.85"></script>
-    <script src="network.js?v=1.85"></script>
-    <script src="app.js?v=1.85"></script>
+    <script src="game.js?v=1.99"></script>
+    <script src="network.js?v=1.99"></script>
+    <script src="app.js?v=1.99"></script>
 </body>
 </html>
