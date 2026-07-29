@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>喜八路麻</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="notification-container" class="notification-container"></div>
+    <div id="app">
+        <div id="lobby-screen" class="screen">
+            <!-- 左右兩側的 GIF 區塊與春聯 -->
+            <div style="position: absolute; right: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
+                <img src="left.gif" alt="Left GIF" style="height: 380px; max-height: 45vh; max-width: 20vw; width: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                <div style="background-color: #dc2626; color: #111; font-family: 'Ma Shan Zheng', cursive; font-size: 2.8rem; padding: 25px 10px; border-radius: 4px; border: 2px solid #111; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 15px; box-shadow: 3px 3px 10px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; font-weight: bold; user-select: none;">我全都要</div>
+            </div>
+            
+            <div style="position: absolute; left: calc(50% + 330px); top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 15px;">
+                <div style="background-color: #dc2626; color: #111; font-family: 'Ma Shan Zheng', cursive; font-size: 2.8rem; padding: 25px 10px; border-radius: 4px; border: 2px solid #111; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 15px; box-shadow: 3px 3px 10px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; font-weight: bold; user-select: none;">怎會如此</div>
+                <img src="right.gif" alt="Right GIF" style="height: 380px; max-height: 45vh; max-width: 20vw; width: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+            </div>
+
+            <div class="card" style="width: 100%; max-width: 600px; z-index: 10;">
+                <h1 style="font-family: 'Ma Shan Zheng', cursive; font-size: 5rem; margin-bottom: 0; background: #dc2626; -webkit-background-clip: initial; -webkit-text-fill-color: #111; color: #111; text-shadow: none; padding: 10px 40px; border-radius: 8px; border: 3px solid #111; display: inline-block; box-shadow: 4px 4px 15px rgba(0,0,0,0.5); letter-spacing: 15px;">喜八路麻</h1>
+                <h2 style="font-family: 'Ma Shan Zheng', cursive; font-size: 1.5rem; color: #cbd5e1; margin-top: 0.5rem; margin-bottom: 2.5rem; letter-spacing: 3px; font-weight: normal;">台灣十六張麻將</h2>
+                <div style="margin-bottom: 20px; text-align: left;">
+                    <label for="player-name" style="display:block; margin-bottom:5px; color:#cbd5e1; font-size:0.9rem;">玩家名字:</label>
+                    <input type="text" id="player-name" placeholder="輸入你的名字" style="width: 100%;">
+                </div>
+                
+                <div style="margin-bottom: 15px; text-align: left;">
+                    <label style="display:block; margin-bottom:5px; color:#cbd5e1; font-size:0.9rem;">出牌時間:</label>
+                    <select id="bot-speed" style="width:100%; padding: 10px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                        <option value="0">你是0 (0秒)</option>
+                        <option value="3000">極速 (3秒)</option>
+                        <option value="5000" selected>標準 (5秒)</option>
+                        <option value="10000">慢 (10秒)</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 25px; text-align: left;">
+                    <label style="display:block; margin-bottom:5px; color:#cbd5e1; font-size:0.9rem;">遊戲長度:</label>
+                    <select id="game-length-select-lobby" style="width:100%; padding: 10px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                        <option value="1_round">一圈 (四局)</option>
+                        <option value="1_match">一將 (十六局)</option>
+                        <option value="infinite" selected>無限局</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button id="btn-single-player" class="primary" style="background: #10b981;">👤 單機極速開局</button>
+                    <button id="btn-create-room" class="primary">🏠 建立連線房間</button>
+                </div>
+
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                    <input type="text" id="room-code-input" placeholder="輸入房間代碼">
+                    <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
+                    <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
+                        當前版本：v1.81<br>made by Kittenz
+                        <div style="margin-top: 10px;">
+                            <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
+                        </div>
+                    </div>
+                </div>
+                <p id="lobby-status" style="margin-top: 15px; color: #facc15;"></p>
+            </div>
+        </div>
+
+        <div id="waiting-room-screen" class="screen hidden">
+            <div class="card">
+                <h2 style="margin-top: 0; margin-bottom: 15px;">等待室</h2>
+                <button id="btn-leave-waiting" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:#cbd5e1; padding:5px 15px; border-radius:4px; cursor:pointer; display:inline-block;">↩ 返回</button>
+                <p style="margin-top: 15px;">房間代碼：<span id="display-room-code" style="font-size: 1.5rem; color: #38bdf8; user-select: all;"></span></p>
+                <div style="margin: 20px 0;">
+                    <h3>已加入玩家 (<span id="player-count">1</span>/4)</h3>
+                    <ul id="waiting-player-list" style="list-style: none; padding: 0;"></ul>
+                </div>
+                
+                <div id="room-settings-display" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: left; display: none;">
+                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #cbd5e1; font-size: 1.1rem;">房間設定</h3>
+                    <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">出牌時間：<span id="display-room-speed" style="color: #fff; font-weight: bold;"></span></p>
+                    <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">遊戲長度：<span id="display-room-length" style="color: #fff; font-weight: bold;"></span></p>
+                </div>
+
+                <p id="waiting-status" style="color: #94a3b8;"></p>
+                <div class="actions">
+                    <button id="btn-add-bot" class="secondary hidden">加入電腦</button>
+                    <button id="btn-start-game" class="primary hidden">開始遊戲</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-screen" class="screen hidden">
+            <div class="game-info" style="z-index: 100; position: absolute; top: 20px; left: 20px; background: rgba(15, 23, 42, 0.8); padding: 10px 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div>剩餘牌數: <span id="deck-count">144</span></div>
+            </div>
+
+            <!-- 管理員控制區 (左側) -->
+            <div id="admin-panel" style="position: absolute; top: 70px; left: 20px; z-index: 200; display: none; flex-direction: column; gap: 10px;">
+                <select id="cheat-hand-select" style="background:rgba(0,0,0,0.5); color:#10b981; border:1px solid rgba(16,185,129,0.5); padding:8px; border-radius:8px; cursor:pointer; font-weight: bold;">
+                    <option value="none">正常發牌</option>
+                    <option value="da_si_xi">大四喜 (16台)</option>
+                    <option value="xiao_si_xi">小四喜 (8台)</option>
+                    <option value="da_san_yuan">大三元 (8台)</option>
+                    <option value="xiao_san_yuan">小三元 (4台)</option>
+                    <option value="wu_an_ke">五暗刻 (8台)</option>
+                    <option value="si_an_ke">四暗刻 (5台)</option>
+                    <option value="san_an_ke">三暗刻 (2台)</option>
+                    <option value="zi_yi_se">字一色 (16台)</option>
+                    <option value="qing_yi_se">清一色 (8台)</option>
+                    <option value="hun_yi_se">混一色 (4台)</option>
+                    <option value="peng_peng_hu">碰碰胡 (4台)</option>
+                    <option value="ping_hu">平胡 (2台)</option>
+                    <option value="quan_qiu_ren">全/半求人 (2/1台)</option>
+                    <option value="dan_ting">單聽 (1台)</option>
+                    <option value="san_yuan_ke">三元刻 (1台)</option>
+                    <option value="men_feng_tai">門風台 (1台)</option>
+                    <option value="hai_di">海底撈月/河底撈魚 (1台)</option>
+                    <option value="tian_ting">天聽 (8台)</option>
+                </select>
+                <button id="btn-cheat-apply" style="background:#10b981; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🪄 變牌</button>
+                <button id="btn-force-draw" style="background:#f59e0b; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🤝 強制流局</button>
+                <button id="btn-force-win" style="background:#8b5cf6; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🏆 強制胡牌</button>
+            </div>
+
+            <!-- 右上角控制區 -->
+            <div style="position: absolute; top: 20px; right: 20px; z-index: 200; display: flex; gap: 10px;">
+                <select id="game-speed-select" style="background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; cursor:pointer;">
+                    <option value="0">你是0 (0秒)</option>
+                    <option value="3000">極速 (3秒)</option>
+                    <option value="5000" selected>標準 (5秒)</option>
+                    <option value="10000">慢 (10秒)</option>
+                </select>
+                <select id="bot-difficulty" style="background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; cursor:pointer;">
+                    <option value="easy">電腦: 簡單</option>
+                    <option value="normal" selected>電腦: 一般</option>
+                    <option value="hard">電腦: 高手</option>
+                </select>
+                <select id="game-length-select" style="background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:8px; cursor:pointer;">
+                    <option value="1_round">一圈 (四局)</option>
+                    <option value="1_match">一將 (十六局)</option>
+                    <option value="infinite" selected>無限局</option>
+                </select>
+                <button id="btn-toggle-mute" style="background:rgba(0,0,0,0.5); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px 15px; border-radius:8px; cursor:pointer;">🔊</button>
+                <button id="btn-back-home" style="background:#ef4444; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap;">🏠 返回大廳</button>
+            </div>
+            
+            <div id="action-bar" class="action-bar hidden">
+                <div class="action-buttons"></div>
+                <div id="chow-options" class="chow-options hidden"></div>
+            </div>
+
+            <div class="game-board">
+                <div class="player-area top-player">
+                    <div class="player-info" id="info-top">對家</div>
+                    <div class="meld-area" id="meld-top"></div>
+                    <div class="hand hidden-hand" id="hand-top"></div>
+                </div>
+
+                <div class="player-area left-player">
+                    <div class="player-info" id="info-left">上家</div>
+                    <div class="meld-area" id="meld-left"></div>
+                    <div class="hand hidden-hand" id="hand-left"></div>
+                </div>
+
+                <div class="player-area right-player">
+                    <div class="player-info" id="info-right">下家</div>
+                    <div class="meld-area" id="meld-right"></div>
+                    <div class="hand hidden-hand" id="hand-right"></div>
+                </div>
+
+                <div class="center-area">
+                    <div id="round-info-text" style="position: absolute; bottom: 15px; left: 20px; color:#60a5fa; font-size: 1.2rem; font-weight: bold;"></div>
+                    <div id="current-turn-indicator" style="font-weight: bold; font-size: 1.5rem; text-align:center; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); color: #fff; white-space: nowrap;">
+                        <span id="turn-text">等待開始...</span>
+                        <span id="turn-timer" style="color:#ef4444; font-size:2rem; margin-left:15px; display:inline-block; min-width:40px;"></span>
+                    </div>
+                    <div class="discard-pool" id="discard-pool"></div>
+                </div>
+
+                <div class="player-area bottom-player">
+                    <div class="player-info" id="info-bottom">我</div>
+                    <div class="meld-area" id="meld-bottom"></div>
+                    <div class="hand my-hand" id="hand-bottom"></div>
+                </div>
+                
+                <!-- Tenpai Hint (Moved to game-board for global right-side positioning) -->
+                <div id="tenpai-hint" style="display:flex; position:absolute; right: 30px; bottom: 30px; background: rgba(0,0,0,0.85); border: 1px solid #facc15; padding: 15px; border-radius: 8px; color: #fff; z-index: 100; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.5); flex-direction: column; gap: 10px; min-width: 150px; max-height: 350px; overflow-y: auto;">
+                    <div style="color:#facc15; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid rgba(250,204,21,0.3); padding-bottom: 5px;">聽牌提示</div>
+                    <div id="tenpai-tiles" style="display:flex; gap: 8px; align-items:flex-start; flex-wrap: wrap; justify-content: center; max-width: 250px;">
+                        <span style="color:#94a3b8; font-size: 0.9rem; padding: 10px;">尚未聽牌</span>
+                    </div>
+                </div>
+            </div>
+            <div id="action-popup" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: bold; color: #ef4444; text-shadow: 0px 0px 15px rgba(255,255,255,0.8), 2px 2px 10px rgba(0,0,0,0.8); z-index: 1000; pointer-events: none; opacity: 0; transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);"></div>
+        </div>
+        
+        <div id="settlement-screen" class="screen hidden">
+            <div class="card" style="max-width: 600px;">
+                <div id="settlement-content"></div>
+                <div class="actions" style="margin-top: 20px;">
+                    <button id="btn-next-round" class="primary hidden">開始下一局</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 遊戲邏輯與網路 -->
+    <script src="game.js?v=1.81"></script>
+    <script src="network.js?v=1.81"></script>
+    <script src="app.js?v=1.81"></script>
+</body>
+</html>

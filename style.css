@@ -1,0 +1,445 @@
+:root {
+    --bg-color: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --tile-bg: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+    --tile-color: #0f172a;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+}
+
+body {
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: hidden;
+    overflow-y: auto; /* 允許上下捲動，避免縮放時看不到牌 */
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.screen {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(1.1);
+    display: none; /* 完全隱藏避免影響排版 */
+}
+
+/* 遊戲結束狀態，避免牌桌上的手牌超出畫面 */
+.game-over .left-player .hand,
+.game-over .right-player .hand {
+    transform: scale(0.65);
+    transform-origin: center;
+}
+.game-over .top-player .hand,
+.game-over .bottom-player .hand {
+    transform: scale(0.8);
+    transform-origin: center;
+}
+
+/* 結算畫面 (Overlay) */
+#settlement-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* 半透明黑背景，保留牌桌 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#settlement-screen .card {
+    max-height: 85vh;
+    max-width: 550px;
+    overflow-y: auto;
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.5);
+    background: rgba(15, 23, 42, 0.95);
+    padding: 20px;
+}
+
+.settlement-hand-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    justify-content: center;
+}
+
+.settlement-hand-display .tile {
+    width: 28px;
+    height: 38px;
+    border-radius: 3px;
+    border: 1px solid #94a3b8;
+}
+.settlement-hand-display .drawn-tile {
+    margin-left: 20px;
+}
+
+/* Typography & General */
+h1 {
+    font-family: 'Ma Shan Zheng', cursive;
+    font-size: 6rem;
+    white-space: nowrap;
+    letter-spacing: 5px;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
+}
+
+h2, h3 { margin-bottom: 1rem; color: var(--text-main); }
+
+/* Glassmorphism Cards */
+.card, .player-list-container {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    padding: 2.5rem;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+.player-list-container { margin-top: 1rem; margin-bottom: 2rem; padding: 1.5rem; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.hidden { display: none !important; }
+
+/* Inputs and Buttons */
+input[type="text"] {
+    width: 100%; padding: 12px 16px; margin-bottom: 1rem;
+    background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color);
+    color: white; border-radius: 10px; font-size: 1rem; outline: none;
+    transition: all 0.3s ease;
+}
+input[type="text"]:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.divider { color: var(--text-muted); font-size: 0.875rem; margin: 10px 0; }
+
+button {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s ease; background: rgba(255, 255, 255, 0.1);
+    color: white; border: 1px solid var(--border-color);
+}
+button:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
+
+button.primary {
+    background: linear-gradient(135deg, var(--primary), #6366f1);
+    border: none; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+button.primary:hover {
+    background: linear-gradient(135deg, var(--primary-hover), #4f46e5);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+}
+#btn-add-bot {
+    background: rgba(234, 179, 8, 0.2);
+    border: 1px solid rgba(234, 179, 8, 0.5);
+    color: #fef08a;
+}
+#btn-add-bot:hover { background: rgba(234, 179, 8, 0.4); }
+
+/* Waiting List */
+#waiting-player-list { list-style: none; text-align: left; padding: 0; }
+#waiting-player-list li {
+    padding: 10px; background: rgba(255, 255, 255, 0.05); margin-bottom: 5px;
+    border-radius: 8px; display: flex; align-items: center;
+}
+
+/* --- Game Board (Mahjong Table) --- */
+.game-board {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at center, #166534 0%, #064e3b 100%);
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.player-area {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.bottom-player { bottom: 20px; left: 50%; transform: translateX(-50%); }
+.top-player { top: 20px; left: 50%; transform: translateX(-50%); }
+.left-player { left: 20px; top: 50%; transform: translateY(-50%); flex-direction: row; }
+.right-player { right: 20px; top: 50%; transform: translateY(-50%); flex-direction: row-reverse; }
+
+.player-info {
+    background: rgba(0, 0, 0, 0.5); padding: 5px 15px; border-radius: 20px;
+    margin: 5px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Meld Area (明牌區) */
+.meld-area { display: flex; gap: 10px; margin: 5px; min-height: 44px; }
+.left-player .meld-area, .right-player .meld-area { flex-direction: column; }
+.meld-group { display: flex; gap: 2px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 6px; }
+.left-player .meld-group, .right-player .meld-group { flex-direction: column; }
+
+/* Hand layout */
+.hand { display: flex; gap: 2px; justify-content: center; } /* 移除自動換行，強制單行 */
+.left-player .hand, .right-player .hand { flex-direction: column; }
+
+/* --- Realistic SVG Tiles (擬真圖片麻將牌) --- */
+.tile {
+    width: var(--tile-width, 56px);
+    height: var(--tile-height, 76px);
+    background: #ffffff; /* 純白/象牙白，避免藍藍的 */
+    border: 1px solid #d1d5db; /* 中性灰色邊框 */
+    border-radius: 6px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    padding: 2px;
+}
+
+.tile::before {
+    content: ''; position: absolute;
+    top: 2px; left: 2px; right: 2px; bottom: 2px;
+    border: 1px solid rgba(0,0,0,0.1); border-radius: 4px;
+}
+
+.tile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    z-index: 1;
+}
+
+.my-hand .tile {
+    width: var(--tile-width, 56px);
+    height: var(--tile-height, 76px);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.my-hand .tile:hover {
+    transform: translateY(-5px);
+    background: #f3f4f6;
+}
+
+/* 剛摸到的牌（在手牌最後面）隔開一整張牌的距離 */
+.player-area.bottom .drawn-tile { margin-left: var(--tile-width, 56px); }
+.player-area.top .drawn-tile { margin-left: var(--tile-width, 56px); }
+.player-area.left .drawn-tile { margin-top: var(--tile-height, 76px); }
+.player-area.right .drawn-tile { margin-top: var(--tile-height, 76px); }
+
+/* 背面 */
+.hidden-tile {
+    background: #4ade80; 
+    box-shadow: 2px 4px 0 #166534, 2px 5px 5px rgba(0,0,0,0.5);
+    border-color: #86efac;
+}
+.hidden-tile .tile-face { display: none; }
+
+.left-player .hidden-tile, .right-player .hidden-tile {
+    width: 52px; height: 36px;
+    box-shadow: 4px 2px 0 #166534, 5px 2px 5px rgba(0,0,0,0.5);
+}
+
+/* Meld Tiles are smaller */
+.meld-tile { width: 32px; height: 46px; box-shadow: 1px 2px 0 #94a3b8; }
+.meld-tile .t-val { font-size: 1rem; }
+.meld-tile .t-suit { font-size: 0.8rem; }
+.meld-tile .t-big { font-size: 1.2rem; }
+
+/* Center Area */
+.center-area {
+    width: 500px;
+    height: 400px;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+    z-index: 5;
+    padding: 10px;
+}
+
+#game-info {
+    background: rgba(0, 0, 0, 0.6); padding: 15px 30px; border-radius: 15px;
+    text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px);
+}
+#current-turn-indicator { font-size: 1.2rem; font-weight: bold; color: #facc15; margin-top: 5px; }
+
+.discard-pool {
+    display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center;
+    gap: 2px; width: 100%; height: 100%; overflow-y: auto;
+}
+.discard-tile { width: 32px; height: 46px; box-shadow: 1px 2px 0 #94a3b8; }
+.discard-tile .t-val { font-size: 1rem; }
+.discard-tile .t-suit { font-size: 0.8rem; }
+.discard-tile .t-big { font-size: 1.2rem; }
+
+.player-area.active .player-info {
+    background: #ca8a04; box-shadow: 0 0 15px rgba(250, 204, 21, 0.6); border-color: #fef08a;
+}
+
+/* --- Action Bar --- */
+.action-bar {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(12px);
+    padding: 20px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    border: 1px solid rgba(255,255,255,0.2); z-index: 100;
+    display: flex; flex-direction: column; align-items: center; gap: 15px;
+}
+.action-bar.hidden { display: none; }
+.action-buttons { display: flex; gap: 10px; }
+.action-btn { width: auto;
+    padding: 12px 24px; font-size: 1.2rem; border: none; border-radius: 8px;
+    cursor: pointer; font-weight: bold; color: white; transition: transform 0.1s;
+}
+.action-btn:hover { transform: scale(1.05); }
+.btn-hu { background: #ef4444; }
+.btn-kong { background: #eab308; }
+.btn-pong { background: #3b82f6; }
+.btn-chow { background: #22c55e; }
+.btn-skip { background: #64748b; }
+
+.chow-options { display: flex; gap: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
+.chow-option { display: flex; gap: 2px; cursor: pointer; padding: 5px; border: 2px solid transparent; border-radius: 8px; }
+.chow-option:hover { border-color: #22c55e; background: rgba(34, 197, 94, 0.2); }
+/* === Settlement Tooltip === */
+.tai-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+    border-bottom: 1px dotted #cbd5e1;
+    color: #f8fafc;
+    margin: 0 4px;
+}
+
+.tai-tooltip .tai-tooltip-text {
+    visibility: hidden;
+    width: 220px;
+    background-color: rgba(15, 23, 42, 0.95);
+    color: #e2e8f0;
+    text-align: left;
+    border-radius: 8px;
+    padding: 10px;
+    position: absolute;
+    z-index: 1000;
+    bottom: 135%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.2s, bottom 0.2s;
+    font-size: 0.9rem;
+    box-shadow: 0px 4px 15px rgba(0,0,0,0.8);
+    border: 1px solid #475569;
+    line-height: 1.5;
+    white-space: normal;
+    font-weight: normal;
+}
+
+.tai-tooltip .tai-tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+}
+
+.tai-tooltip:hover .tai-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+    bottom: 125%;
+}
+
+.notification-container { position: fixed; top: 20px; left: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.notification-toast { background: rgba(0, 0, 0, 0.85); color: #fff; padding: 12px 20px; border-radius: 8px; border-left: 4px solid #facc15; box-shadow: 0 4px 6px rgba(0,0,0,0.3); font-size: 1rem; animation: slideIn 0.3s ease-out forwards; pointer-events: auto; }
+.notification-toast.error { border-left-color: #ef4444; }
+.notification-toast.fade-out { animation: fadeOut 0.5s ease-in forwards; }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-20px); } }
+
+/* --- Responsive Tile Sizes --- */
+@media (max-width: 1200px) {
+    :root {
+        --tile-width: 48px;
+        --tile-height: 65px;
+    }
+}
+@media (max-width: 900px) {
+    :root {
+        --tile-width: 38px;
+        --tile-height: 52px;
+    }
+}
+@media (max-width: 600px) {
+    :root {
+        --tile-width: 28px;
+        --tile-height: 38px;
+    }
+}
+@media (max-width: 400px) {
+    :root {
+        --tile-width: 22px;
+        --tile-height: 30px;
+    }
+}

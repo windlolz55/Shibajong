@@ -1,0 +1,1111 @@
+// --- 應用程式與 UI 邏輯 (app.js) ---
+
+const screens = {
+    lobby: document.getElementById('lobby-screen'),
+    waiting: document.getElementById('waiting-room-screen'),
+    game: document.getElementById('game-screen'),
+    settlement: document.getElementById('settlement-screen')
+};
+
+const UI = {
+    playerName: document.getElementById('player-name'),
+    botSpeed: document.getElementById('bot-speed'),
+    btnSinglePlayer: document.getElementById('btn-single-player'),
+    roomCodeInput: document.getElementById('room-code-input'),
+    btnCreate: document.getElementById('btn-create-room'),
+    btnJoin: document.getElementById('btn-join-room'),
+    btnAddBot: document.getElementById('btn-add-bot'),
+    btnStart: document.getElementById('btn-start-game'),
+    botDifficulty: document.getElementById('bot-difficulty'),
+    gameSpeedSelect: document.getElementById('game-speed-select'),
+    btnLeaveWaiting: document.getElementById('btn-leave-waiting'),
+    lobbyStatus: document.getElementById('lobby-status'),
+    displayRoomCode: document.getElementById('display-room-code'),
+    playerList: document.getElementById('waiting-player-list'),
+    playerCount: document.getElementById('player-count'),
+    btnStartGame: document.getElementById('btn-start-game'),
+    btnBackHome: document.getElementById('btn-back-home'),
+    btnForceDraw: document.getElementById('btn-force-draw'),
+    btnForceWin: document.getElementById('btn-force-win'),
+    btnToggleMute: document.getElementById('btn-toggle-mute'),
+    adminPanel: document.getElementById('admin-panel'),
+    btnAdminLogin: document.getElementById('btn-admin-login'),
+    deckCount: document.getElementById('deck-count'),
+    turnText: document.getElementById('turn-text'),
+    turnTimer: document.getElementById('turn-timer'),
+    discardPool: document.getElementById('discard-pool'),
+    actionBar: document.getElementById('action-bar'),
+    actionButtons: document.querySelector('.action-buttons'),
+    chowOptionsContainer: document.getElementById('chow-options'),
+    settlementContent: document.getElementById('settlement-content'),
+    btnNextRound: document.getElementById('btn-next-round'),
+    hands: {
+        bottom: document.getElementById('hand-bottom'),
+        right: document.getElementById('hand-right'),
+        top: document.getElementById('hand-top'),
+        left: document.getElementById('hand-left')
+    },
+    melds: {
+        bottom: document.getElementById('meld-bottom'),
+        right: document.getElementById('meld-right'),
+        top: document.getElementById('meld-top'),
+        left: document.getElementById('meld-left')
+    },
+    infos: {
+        bottom: document.getElementById('info-bottom'),
+        right: document.getElementById('info-right'),
+        top: document.getElementById('info-top'),
+        left: document.getElementById('info-left')
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+    try {
+        const savedName = localStorage.getItem('mj_playerName');
+        if (savedName && UI.playerName) {
+            UI.playerName.value = savedName;
+        }
+    } catch (e) {
+        console.warn("localStorage not available:", e);
+    }
+});
+
+let network = null;
+let audioCtx = null;
+let isMuted = false;
+let currentTimerInterval = null;
+window.isAdmin = false;
+
+// --- Helper Functions ---
+function toggleMute() {
+    isMuted = !isMuted;
+    UI.btnToggleMute.innerText = isMuted ? '🔇' : '🔊';
+    if (isMuted && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
+}
+
+// --- Socket / Room Logic ---
+
+if (UI.btnAdminLogin) {
+    UI.btnAdminLogin.addEventListener('click', () => {
+        const pw = prompt('請輸入管理員密碼：');
+        if (pw === 'kittenz') {
+            window.isAdmin = true;
+            alert('管理員模式已啟用，您建立房間後將可使用變牌與強制胡牌功能。');
+            if (network && network.isHost && UI.adminPanel) {
+                UI.adminPanel.style.display = 'flex';
+            }
+        } else if (pw !== null) {
+            alert('密碼錯誤');
+        }
+    });
+}
+
+if (UI.btnToggleMute) {
+    UI.btnToggleMute.addEventListener('click', toggleMute);
+}
+
+window.showNotification = function(message, isError = false) {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `notification-toast ${isError ? 'error' : ''}`;
+    toast.innerText = message;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        toast.addEventListener('animationend', () => {
+            toast.remove();
+        });
+    }, 4000); // 顯示 4 秒後消失
+};
+
+function speakText(text) {
+    if (isMuted || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel(); // 停止先前的語音
+    // 使用 setTimeout 避免在 cancel 後立即 speak 導致 Chromium 引擎中斷
+    setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW';
+        utterance.rate = 1.2;
+        window.speechSynthesis.speak(utterance);
+    }, 50);
+}
+
+function playDiscardSound() {
+    if (isMuted) return;
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+
+    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.05);
+}
+
+function getBotSpeed() {
+    const val = parseInt(UI.botSpeed.value);
+    return isNaN(val) ? 6000 : val;
+}
+
+function showScreen(screenName) {
+    Object.keys(screens).forEach(key => {
+        const s = screens[key];
+        // 如果是結算畫面，不要隱藏 game-screen，讓他當背景
+        if (screenName === 'settlement' && key === 'game') {
+            s.classList.remove('hidden');
+        } else {
+            s.classList.add('hidden');
+        }
+    });
+    screens[screenName].classList.remove('hidden');
+}
+
+UI.btnSinglePlayer.addEventListener('click', async () => {
+    const name = UI.playerName.value.trim() || 'Host';
+    try { localStorage.setItem('mj_playerName', name); } catch(e) {}
+    UI.lobbyStatus.innerText = '正在建立單機遊戲...';
+    
+    const gameLength = document.getElementById('game-length-select-lobby').value;
+    
+    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
+    network.isLocalSinglePlayer = true;
+    try {
+        await network.createRoom(name, gameLength);
+        for(let i=0; i<3; i++) {
+            network.addBot();
+        }
+        network.startGame();
+    } catch (err) {
+        UI.lobbyStatus.innerText = '建立失敗：' + err.message;
+    }
+});
+
+UI.btnCreate.addEventListener('click', async () => {
+    const name = UI.playerName.value.trim() || 'Host';
+    try { localStorage.setItem('mj_playerName', name); } catch(e) {}
+    UI.lobbyStatus.innerText = '正在建立房間...';
+    UI.btnCreate.disabled = true;
+    
+    const gameLength = document.getElementById('game-length-select-lobby').value;
+    
+    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
+    network.isLocalSinglePlayer = false;
+    try {
+        const roomId = await network.createRoom(name, gameLength);
+        UI.displayRoomCode.innerText = roomId;
+        showScreen('waiting');
+        updatePlayerList(network.game.players, { botSpeed: network.botSpeed, gameLength: network.gameLength });
+    } catch (err) {
+        UI.lobbyStatus.innerText = '建立房間失敗：' + err.message;
+        UI.btnCreate.disabled = false;
+    }
+});
+
+UI.btnJoin.addEventListener('click', async () => {
+    const name = UI.playerName.value.trim() || 'Client';
+    const code = UI.roomCodeInput.value.trim();
+    if (!code) return (UI.lobbyStatus.innerText = '請輸入房間代碼');
+    
+    try { localStorage.setItem('mj_playerName', name); } catch(e) {}
+    UI.lobbyStatus.innerText = '正在加入房間...';
+    UI.btnJoin.disabled = true;
+
+    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
+    network.isLocalSinglePlayer = false;
+    try {
+        await network.joinRoom(code, name);
+        UI.displayRoomCode.innerText = code;
+        showScreen('waiting');
+    } catch (err) {
+        UI.lobbyStatus.innerText = '加入房間失敗：' + err.message;
+        UI.btnJoin.disabled = false;
+    }
+});
+
+UI.btnStart.addEventListener('click', () => {
+    if (network && network.isHost) {
+        network.startGame();
+    } else if (network && !network.isHost) {
+        network.hostConnection.send({ type: 'ready' });
+    }
+});
+
+UI.botDifficulty.addEventListener('change', (e) => {
+    if (network && network.game) {
+        network.game.botDifficulty = e.target.value;
+        if (network.isHost) network.broadcastGameState();
+    }
+});
+
+UI.gameSpeedSelect.addEventListener('change', (e) => {
+    if (network) {
+        network.botSpeed = parseInt(e.target.value);
+        if (network.isHost) network.broadcastGameState();
+    }
+});
+
+const gameLengthSelect = document.getElementById('game-length-select');
+if (gameLengthSelect) {
+    gameLengthSelect.addEventListener('change', (e) => {
+        if (network && network.game) {
+            network.gameLength = e.target.value;
+            network.game.gameLength = e.target.value;
+            if (network.isHost) network.broadcastGameState();
+        }
+    });
+}
+
+UI.btnAddBot.addEventListener('click', () => {
+    if (network && network.isHost) network.addBot();
+});
+
+function updatePlayerList(players, settings) {
+    UI.playerList.innerHTML = '';
+    players.forEach(p => {
+        const li = document.createElement('li');
+        li.style.display = 'flex';
+        li.style.alignItems = 'center';
+        
+        let status = '';
+        if (p.index === 0) status = ' (房主)';
+        else if (p.isBot) status = ' (電腦)';
+        else status = ' (玩家)';
+        
+        const textSpan = document.createElement('span');
+        textSpan.innerText = p.name + status;
+        textSpan.style.flexGrow = '1';
+        
+        if (p.isReady || p.isBot || p.index === 0) {
+            textSpan.style.color = '#4ade80';
+        } else {
+            textSpan.style.color = '#f87171';
+        }
+        
+        li.appendChild(textSpan);
+        
+        if (network && network.isHost && p.index !== 0 && network.game.gameState === 'INIT') {
+            const kickBtn = document.createElement('button');
+            kickBtn.innerText = '❌';
+            kickBtn.style.background = 'none';
+            kickBtn.style.border = 'none';
+            kickBtn.style.cursor = 'pointer';
+            kickBtn.style.fontSize = '1.2rem';
+            kickBtn.style.width = 'auto'; // Fix width 100% issue!
+            kickBtn.style.padding = '0 10px';
+            kickBtn.style.marginLeft = 'auto';
+            kickBtn.onclick = () => {
+                network.kickPlayer(p.index);
+            };
+            li.appendChild(kickBtn);
+        }
+        
+        UI.playerList.appendChild(li);
+    });
+    UI.playerCount.innerText = players.length;
+
+    if (network.isHost) {
+        if (players.length < 4) {
+            UI.btnAddBot.classList.remove('hidden');
+            UI.btnStart.classList.add('hidden');
+            document.getElementById('waiting-status').innerText = '等待其他玩家加入... 或加入電腦';
+        } else {
+            UI.btnAddBot.classList.add('hidden');
+            UI.btnStart.classList.remove('hidden');
+            document.getElementById('waiting-status').innerText = '人數已滿，可以開始了！';
+            UI.btnStart.innerText = '開始遊戲';
+        }
+    } else {
+        UI.btnAddBot.classList.add('hidden');
+        UI.btnStart.classList.remove('hidden');
+        
+        const myPlayer = players.find(p => p.index === network.myPlayerIndex);
+        if (myPlayer && myPlayer.isReady) {
+            UI.btnStart.innerText = '取消準備';
+            UI.btnStart.style.backgroundColor = '#f59e0b'; // Amber for cancel
+        } else {
+            UI.btnStart.innerText = '準備完成';
+            UI.btnStart.style.backgroundColor = '#10b981'; // Green for ready
+        }
+        
+        document.getElementById('waiting-status').innerText = '等待房主開始遊戲...';
+    }
+
+    if (settings) {
+        let roomSettingsDiv = document.getElementById('room-settings-display');
+        if (!roomSettingsDiv) {
+            roomSettingsDiv = document.createElement('div');
+            roomSettingsDiv.id = 'room-settings-display';
+            roomSettingsDiv.style.background = 'rgba(0,0,0,0.3)';
+            roomSettingsDiv.style.padding = '15px';
+            roomSettingsDiv.style.borderRadius = '8px';
+            roomSettingsDiv.style.marginTop = '15px';
+            roomSettingsDiv.style.marginBottom = '15px';
+            roomSettingsDiv.style.textAlign = 'left';
+            
+            const waitingStatus = document.getElementById('waiting-status');
+            if (waitingStatus) {
+                waitingStatus.parentNode.insertBefore(roomSettingsDiv, waitingStatus);
+            }
+        }
+        
+        let lengthText = "無限局";
+        if (settings.gameLength === '1_round') lengthText = "一圈 (四局)";
+        if (settings.gameLength === '1_match') lengthText = "一將 (十六局)";
+
+        let speedText = settings.botSpeed + " 毫秒";
+        if (settings.botSpeed == 0) speedText = "你是0 (0秒)";
+        else if (settings.botSpeed == 3000) speedText = "極速 (3秒)";
+        else if (settings.botSpeed == 5000) speedText = "標準 (5秒)";
+        else if (settings.botSpeed == 10000) speedText = "慢 (10秒)";
+        
+        roomSettingsDiv.innerHTML = `
+            <h3 style="margin-top: 0; margin-bottom: 10px; color: #cbd5e1; font-size: 1.1rem;">房間設定</h3>
+            <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">出牌時間：<span style="color: #fff; font-weight: bold;">${speedText}</span></p>
+            <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">遊戲長度：<span style="color: #fff; font-weight: bold;">${lengthText}</span></p>
+        `;
+        roomSettingsDiv.style.display = 'block';
+    }
+}
+
+if (UI.btnLeaveWaiting) {
+    UI.btnLeaveWaiting.addEventListener('click', () => {
+        location.reload();
+    });
+}
+
+if (UI.btnNextRound) {
+    UI.btnNextRound.addEventListener('click', () => {
+        showScreen('game');
+        network.sendAction('next_round', null);
+    });
+}
+
+if (UI.btnBackHome) {
+    UI.btnBackHome.addEventListener('click', () => {
+        if (confirm("確定要返回大廳嗎？連線將會中斷。")) {
+            location.reload();
+        }
+    });
+}
+
+if (UI.btnForceDraw) {
+    UI.btnForceDraw.addEventListener('click', () => {
+        if (network && network.isHost) {
+            if (confirm("確定要強制結束這局（流局 / 連莊）嗎？")) {
+                network.sendAction('force_end', 'draw');
+            }
+        }
+    });
+}
+
+if (UI.btnForceWin) {
+    UI.btnForceWin.addEventListener('click', () => {
+        if (network && network.isHost) {
+            if (confirm("確定要強制胡牌嗎？\n(將會由「當前回合」的玩家直接胡牌)")) {
+                const winner = window.currentGameStateObj ? window.currentGameStateObj.currentTurn : network.myPlayerIndex;
+                network.sendAction('force_end', winner);
+            }
+        }
+    });
+}
+
+const cheatHandSelect = document.getElementById('cheat-hand-select');
+const btnCheatApply = document.getElementById('btn-cheat-apply');
+if (btnCheatApply && cheatHandSelect) {
+    btnCheatApply.addEventListener('click', () => {
+        if (network && network.isHost && network.game) {
+            const cheatType = cheatHandSelect.value;
+            const myIndex = network.myPlayerIndex;
+            network.game.applyCheatHand(myIndex, cheatType);
+            network.broadcastGameState();
+            if (window.showNotification) showNotification('已變牌成功！請點擊強制胡牌測試結算。');
+        }
+    });
+}
+
+function startGameUI() {
+    showScreen('game');
+    if (network) {
+        UI.gameSpeedSelect.disabled = !network.isHost;
+        UI.botDifficulty.disabled = !network.isHost;
+        const gameLengthSelect = document.getElementById('game-length-select');
+        if (gameLengthSelect) {
+            gameLengthSelect.disabled = !network.isHost;
+            gameLengthSelect.style.display = 'inline-block';
+        }
+        UI.gameSpeedSelect.style.display = 'inline-block';
+        UI.botDifficulty.style.display = 'inline-block';
+        
+        if (network.isHost) {
+            UI.gameSpeedSelect.value = network.botSpeed.toString();
+            if (gameLengthSelect && network.game) {
+                gameLengthSelect.value = network.game.gameLength;
+            }
+            if (UI.adminPanel) {
+                UI.adminPanel.style.display = window.isAdmin ? 'flex' : 'none';
+            }
+        } else {
+            if (UI.adminPanel) UI.adminPanel.style.display = 'none';
+        }
+    }
+    if (network.isHost) {
+        network.game.startNewRound();
+        network.broadcastGameState();
+    }
+}
+
+function updateGameState(state, myIndex) {
+    window.currentGameStateObj = state;
+    
+    // 如果遊戲正在進行中，確保畫面切換回遊戲區（避免非房主卡在結算畫面）
+    if (state.gameState === 'PLAYING' || state.gameState === 'WAIT_ACTION') {
+        showScreen('game');
+    }
+    
+    if (state.botSpeed && !network.isHost) {
+        UI.gameSpeedSelect.value = state.botSpeed.toString();
+    }
+    if (state.botDifficulty && !network.isHost) {
+        UI.botDifficulty.value = state.botDifficulty;
+    }
+    if (state.gameLength && !network.isHost) {
+        document.getElementById('game-length-select').value = state.gameLength;
+    }
+    
+    // Update Round Info Text (e.g. 東風東局)
+    const windNames = ['東', '南', '西', '北'];
+    if (state.roundWind !== undefined && state.dealerIndex !== undefined && state.gameState !== 'INIT') {
+        const roundWindStr = windNames[state.roundWind % 4];
+        // Calculate dealer wind relative to initial dealer (dealerCount logic handles initialDealer but let's assume Host=0 is East)
+        // initialDealer is always 0 in our code currently, so dealer's wind is just dealerIndex
+        const dealerWindStr = windNames[state.dealerIndex % 4];
+        const roundInfoText = document.getElementById('round-info-text');
+        if (roundInfoText) {
+            roundInfoText.innerText = `${roundWindStr}風${dealerWindStr}局`;
+        }
+    }
+    
+    if (state.actionEvent && state.actionEvent.timestamp !== window.lastActionEventTime) {
+        window.lastActionEventTime = state.actionEvent.timestamp;
+        const playerName = state.players[state.actionEvent.playerIndex].name;
+        const popup = document.getElementById('action-popup');
+        if (popup && state.actionEvent.type !== 'discard') {
+            popup.innerText = `${state.actionEvent.type}！`;
+            popup.style.opacity = '1';
+            popup.style.transform = 'translate(-50%, -50%) scale(0.5)';
+            setTimeout(() => { popup.style.transform = 'translate(-50%, -50%) scale(1.2)'; }, 50);
+            setTimeout(() => { popup.style.transform = 'translate(-50%, -50%) scale(1)'; }, 150);
+            setTimeout(() => { popup.style.opacity = '0'; }, 1500);
+            
+            // TTS
+            if (!isMuted) {
+                speakText(`${state.actionEvent.type}`);
+            }
+
+            // 在吃碰槓的 1.5 秒延遲後，更新頂部的狀態文字
+            setTimeout(() => {
+                if (window.currentGameStateObj && window.currentGameStateObj.gameState === 'PLAYING') {
+                    if (network && network.myPlayerIndex === window.currentGameStateObj.currentTurn) {
+                        UI.turnText.innerText = "👉 輪到你出牌了！";
+                    } else {
+                        const currentPlayerInfo = window.currentGameStateObj.players[window.currentGameStateObj.currentTurn];
+                        let relStr = '';
+                        const offset = (window.currentGameStateObj.currentTurn - network.myPlayerIndex + 4) % 4;
+                        if (offset === 1) relStr = ' (下家)';
+                        else if (offset === 2) relStr = ' (對家)';
+                        else if (offset === 3) relStr = ' (上家)';
+                        UI.turnText.innerText = `等待 ${currentPlayerInfo.name}${relStr} 出牌...`;
+                    }
+                    UI.turnText.style.color = '#facc15';
+                }
+            }, 1500);
+        }
+    }
+
+    UI.deckCount.innerText = state.deckCount;
+    
+    let showTimer = state.timerEnabled;
+    if (state.gameState === 'WAIT_ACTION') {
+        const myPending = state.pendingActions && state.pendingActions.find(p => p.playerIndex === myIndex && !p.responded);
+        if (!myPending) {
+            showTimer = false;
+        }
+    }
+
+    // 更新倒數計時 UI
+    if (showTimer && (state.remainingTimeMs !== undefined || state.deadline)) {
+        clearInterval(currentTimerInterval);
+        
+        // If remainingTimeMs is provided by server, calculate local deadline
+        const localDeadline = state.remainingTimeMs !== undefined 
+                              ? Date.now() + state.remainingTimeMs 
+                              : state.deadline;
+                              
+        const stateStartTime = Date.now();
+        const updateTimer = () => {
+            if (state.visualDelay) {
+                const elapsed = Date.now() - stateStartTime;
+                if (elapsed < state.visualDelay) {
+                    UI.turnTimer.innerText = '';
+                    return;
+                }
+            }
+            let left = Math.max(0, Math.ceil((localDeadline - Date.now()) / 1000));
+            UI.turnTimer.innerText = left > 0 ? left : '';
+        };
+        updateTimer();
+        currentTimerInterval = setInterval(updateTimer, 200);
+    } else {
+        clearInterval(currentTimerInterval);
+        UI.turnTimer.innerText = '';
+    }
+
+    if (state.gameState === 'GAME_OVER') {
+        const winnerName = state.winner !== -1 ? state.players[state.winner].name : '無人';
+        UI.turnText.innerText = `🚨 遊戲即將開始`;
+        if (state.winner !== -1) UI.turnText.style.color = '#ef4444';
+        else UI.turnText.style.color = '#94a3b8';
+        UI.actionBar.classList.add('hidden');
+        document.querySelector('.game-board').classList.add('game-over');
+    } else if (state.gameState === 'WAIT_ACTION') {
+        UI.turnText.innerText = ``; 
+        document.querySelector('.game-board').classList.remove('game-over');
+    } else {
+        document.querySelector('.game-board').classList.remove('game-over');
+    }
+
+    const positions = ['bottom', 'right', 'top', 'left'];
+    
+    for (let offset = 0; offset < 4; offset++) {
+        const targetPlayerIndex = (myIndex + offset) % 4;
+        const pos = positions[offset];
+        
+        let relationStr = '';
+        if (offset === 1) relationStr = ' (下家)';
+        else if (offset === 2) relationStr = ' (對家)';
+        else if (offset === 3) relationStr = ' (上家)';
+        
+        const handData = state.hands[targetPlayerIndex] || [];
+        const meldData = state.melds[targetPlayerIndex] || [];
+        const playerInfo = state.players[targetPlayerIndex];
+        
+        const isTurn = (state.gameState === 'PLAYING' && state.currentTurn === targetPlayerIndex);
+        const isDealer = state.dealerIndex === targetPlayerIndex;
+        
+        if (playerInfo) {
+            let windIndicator = '';
+            if (state.dealerIndex !== undefined) {
+                const windNames = ['東', '南', '西', '北'];
+                const windIndex = (targetPlayerIndex - state.dealerIndex + 4) % 4;
+                windIndicator = `<span style="color:#60a5fa; font-weight:bold; margin-left: 5px;">[${windNames[windIndex]}]</span>`;
+            }
+            
+            UI.infos[pos].innerHTML = `
+                <div>${playerInfo.name}${relationStr}${windIndicator} ${isDealer ? '<span style="color:#ef4444">(莊)</span>' : ''}</div>
+                <div style="font-size: 0.8rem; color: #facc15;">$${state.scores[targetPlayerIndex]}</div>
+            `;
+        }
+        
+        const playerArea = UI.infos[pos].parentElement;
+        let isMyTurnAndCanSelfDraw = false;
+        let mySelfKongOptions = [];
+
+        if (isTurn) {
+            playerArea.classList.add('active');
+            if (offset === 0 && state.gameState === 'PLAYING') {
+                if (!window.justDiscardedText && (!state.visualDelay || state.visualDelay === 0)) {
+                    UI.turnText.innerText = "👉 輪到你出牌了！";
+                }
+                if (!window.justDiscardedText) {
+                    UI.turnText.style.color = '#facc15';
+                }
+                if (state.selfDrawFlags && state.selfDrawFlags[myIndex]) {
+                    isMyTurnAndCanSelfDraw = true;
+                }
+                if (state.selfKongOptions && state.selfKongOptions[myIndex] && state.selfKongOptions[myIndex].length > 0) {
+                    mySelfKongOptions = state.selfKongOptions[myIndex];
+                }
+            } else if (state.gameState === 'PLAYING') {
+                if (!state.visualDelay || state.visualDelay === 0) {
+                    UI.turnText.innerText = `等待 ${playerInfo.name}${relationStr} 出牌...`;
+                }
+                UI.turnText.style.color = '#facc15';
+            }
+        } else {
+            playerArea.classList.remove('active');
+        }
+
+        const isMe = (offset === 0) || (state.gameState === 'GAME_OVER');
+        renderHand(pos, handData, isMe, isTurn && offset === 0);
+        renderMelds(pos, meldData, isMe);
+        
+        // 如果是我，且可以自摸或自摸槓，顯示中央面板
+        if (isMyTurnAndCanSelfDraw || mySelfKongOptions.length > 0) {
+            UI.actionBar.classList.remove('hidden');
+            UI.actionButtons.innerHTML = '';
+            UI.chowOptionsContainer.innerHTML = '';
+            UI.chowOptionsContainer.classList.add('hidden');
+            
+            if (isMyTurnAndCanSelfDraw) {
+                const btnSelfDraw = addActionButton('自摸', 'btn-hu', 'HU', false);
+                btnSelfDraw.addEventListener('click', () => {
+                    UI.actionBar.classList.add('hidden');
+                    network.sendAction('self_draw_hu', null);
+                });
+            }
+
+            mySelfKongOptions.forEach(kongOpt => {
+                const btnKong = addActionButton(kongOpt.type === 'ANKONG' ? '暗槓' : '加槓', 'btn-kong', 'KONG', false);
+                btnKong.addEventListener('click', () => {
+                    UI.actionBar.classList.add('hidden');
+                    network.sendAction('self_kong', kongOpt);
+                });
+            });
+            
+            const btnSkip = addActionButton('跳過', 'btn-skip', 'SKIP', false);
+            btnSkip.addEventListener('click', () => {
+                UI.actionBar.classList.add('hidden');
+            });
+        } else if (offset === 0 && state.gameState === 'PLAYING' && !isMyTurnAndCanSelfDraw && mySelfKongOptions.length === 0) {
+             // 隱藏中央按鈕（如果有殘留的話）
+             UI.actionBar.classList.add('hidden');
+        }
+    }
+
+    // 新局開始或陣列為空時，重置計數
+        if (state.discardPool.length === 0) {
+        window.lastDiscardCount = 0;
+    }
+
+    // 檢查是否有新的牌丟出，如果有則播放聲音和語音
+    if (state.discardPool.length > 0 && (window.lastDiscardCount === undefined || window.lastDiscardCount < state.discardPool.length)) {
+        playDiscardSound();
+        const lastTile = state.discardPool[state.discardPool.length - 1];
+        
+        const digitToZh = {1:'一', 2:'二', 3:'三', 4:'四', 5:'五', 6:'六', 7:'七', 8:'八', 9:'九'};
+        let tileName = lastTile.type;
+        if (lastTile.type === '萬' || lastTile.type === '筒' || lastTile.type === '條') {
+            tileName = digitToZh[lastTile.value] + lastTile.type;
+        } else {
+            tileName = lastTile.value;
+            if (tileName === '東' || tileName === '南' || tileName === '西' || tileName === '北') tileName += '風';
+        }
+        
+        // 顯示誰打出了什麼牌
+        const throwerIndex = state.gameState === 'WAIT_ACTION' ? state.currentTurn : (state.currentTurn - 1 + 4) % 4;
+        
+        let throwerName = state.players[throwerIndex] ? state.players[throwerIndex].name : '玩家';
+        if (throwerIndex !== myIndex) {
+            const relOffset = (throwerIndex - myIndex + 4) % 4;
+            if (relOffset === 1) throwerName += ' (下家)';
+            else if (relOffset === 2) throwerName += ' (對家)';
+            else if (relOffset === 3) throwerName += ' (上家)';
+        }
+        
+        if (state.gameState === 'PLAYING') {
+            const currentPlayer = state.players[state.currentTurn];
+            let relStr = '';
+            if (network && network.myPlayerIndex !== state.currentTurn) {
+                const offset = (state.currentTurn - myIndex + 4) % 4;
+                if (offset === 1) relStr = ' (下家)';
+                else if (offset === 2) relStr = ' (對家)';
+                else if (offset === 3) relStr = ' (上家)';
+            }
+            
+            if (state.visualDelay && state.visualDelay > 0) {
+                UI.turnText.innerHTML = `${throwerName} 打出 ${tileName}`;
+                UI.turnText.style.color = '#fff';
+                setTimeout(() => {
+                    if (window.currentGameStateObj && window.currentGameStateObj.gameState === 'PLAYING') {
+                        if (network && network.myPlayerIndex === state.currentTurn) {
+                            UI.turnText.innerHTML = "👉 輪到你出牌了！";
+                        } else {
+                            UI.turnText.innerHTML = `等待 ${currentPlayer.name}${relStr} 出牌...`;
+                        }
+                        UI.turnText.style.color = '#facc15';
+                    }
+                }, state.visualDelay);
+            } else {
+                if (network && network.myPlayerIndex === state.currentTurn) {
+                    UI.turnText.innerHTML = "👉 輪到你出牌了！";
+                } else {
+                    UI.turnText.innerHTML = `等待 ${currentPlayer.name}${relStr} 出牌...`;
+                }
+                UI.turnText.style.color = '#facc15';
+            }
+        } else if (state.gameState === 'WAIT_ACTION') {
+            let actionStr = "";
+            const myAction = state.pendingActions && state.pendingActions.find(p => p.playerIndex === myIndex && !p.responded);
+            if (myAction) {
+                actionStr = "<br>=> 請選擇動作！";
+            }
+            UI.turnText.innerHTML = `${throwerName} 打出 ${tileName}${actionStr}`;
+            UI.turnText.style.color = actionStr ? '#facc15' : '#fff';
+        }
+
+        speakText(tileName);
+    }
+    window.lastDiscardCount = state.discardPool.length;
+
+    renderDiscardPool(state.discardPool);
+    handlePendingActions(state, myIndex);
+
+    // 聽牌提示 (Tenpai Hint) 邏輯
+    if (state.gameState === 'PLAYING' || state.gameState === 'WAIT_ACTION') {
+        // 使用 timeout 稍微延遲，避免阻塞主要 UI 渲染
+        setTimeout(() => {
+            const waitTiles = state.waitTiles ? state.waitTiles[myIndex] : [];
+            const tilesEl = document.getElementById('tenpai-tiles');
+            if (waitTiles && waitTiles.length > 0) {
+                let html = '';
+                const digitToZh = {1:'一', 2:'二', 3:'三', 4:'四', 5:'五', 6:'六', 7:'七', 8:'八', 9:'九'};
+                waitTiles.forEach(t => {
+                    let tileName = t.type;
+                    if (t.type === '萬' || t.type === '筒' || t.type === '條') {
+                        tileName = digitToZh[t.value] + t.type;
+                    } else {
+                        tileName = t.value;
+                        if (tileName === '東' || tileName === '南' || tileName === '西' || tileName === '北') tileName += '風';
+                    }
+                    html += `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                        <div style="width:28px; height:38px; border-radius:3px; overflow:hidden; border: 1px solid #94a3b8; background-color:#f1f5f9; display:flex; align-items:center; justify-content:center;">${getTileHTML(t)}</div>
+                        <span style="font-size: 0.8rem; color: #cbd5e1; white-space: nowrap;">${tileName}</span>
+                    </div>`;
+                });
+                tilesEl.innerHTML = html;
+            } else {
+                tilesEl.innerHTML = `<span style="color:#94a3b8; font-size: 0.9rem; padding: 10px;">尚未聽牌</span>`;
+            }
+        }, 10);
+    } else {
+        document.getElementById('tenpai-tiles').innerHTML = `<span style="color:#94a3b8; font-size: 0.9rem; padding: 10px;">尚未聽牌</span>`;
+    }
+
+    if (state.gameState === 'GAME_OVER' && state.settlementData) {
+        showSettlement(state, myIndex);
+    }
+}
+
+const TAI_EXPLANATIONS = {
+    '莊家': '身為莊家，無論胡牌或放槍都會多計1台。',
+    '自摸': '自己摸到胡牌的那張牌。',
+    '門清': '沒有任何明吃、明碰、明槓，全憑自己摸牌。',
+    '門清一摸三': '在門清的狀態下自摸，直接計3台（包含門清與自摸）。',
+    '全求人': '手牌全部吃、碰落地，只剩一張牌單吊，並且胡別人的牌。',
+    '半求人': '手牌全部吃、碰落地，只剩一張牌單吊，並且自摸。',
+    '獨聽': '手牌只能聽唯一一張牌（例如中洞、邊張、單吊）。',
+    '海底撈月': '摸到牌堆最後一張牌並自摸胡牌。',
+    '河底撈魚': '別人打出牌堆最後一張牌，你胡牌。',
+    '三元刻': '擁有紅中、發財或白板的刻子，每組1台。',
+    '小三元': '擁有兩組三元牌的刻子，加上一對三元牌的眼睛。',
+    '大三元': '擁有紅中、發財、白板各一組刻子。',
+    '門風台': '擁有與自己座位相同風向（東南西北）的刻子。',
+    '小四喜': '擁有三組風牌的刻子，加上一對風牌的眼睛。',
+    '大四喜': '擁有東、南、西、北風四組刻子。',
+    '平胡': '沒有字牌，沒有任何刻子，無明碰明槓，且非獨聽。',
+    '碰碰胡': '手牌全部由刻子（碰、暗刻）和一對眼睛組成，沒有順子。',
+    '三暗刻': '手牌中有三組自己摸到的刻子（非碰牌）。',
+    '四暗刻': '手牌中有四組自己摸到的刻子。',
+    '五暗刻': '手牌中有五組自己摸到的刻子。',
+    '混一色': '手牌只有一種花色（萬/筒/條）再加上字牌。',
+    '清一色': '手牌完全只有一種花色（萬/筒/條），且沒有字牌。',
+    '字一色': '手牌全部都是字牌。'
+};
+
+function showSettlement(state, myIndex) {
+    showScreen('settlement');
+    const s = state.settlementData;
+    let html = '';
+
+    if (state.isMatchOver) {
+        let bestScore = -Infinity;
+        let matchWinnerName = "";
+        state.players.forEach((p, index) => {
+            if (state.scores[index] > bestScore) {
+                bestScore = state.scores[index];
+                matchWinnerName = p.name;
+            }
+        });
+        
+        let matchEndReason = "遊戲結束";
+        if (state.gameLength === '1_round') matchEndReason = "一圈結束";
+        if (state.gameLength === '1_match') matchEndReason = "一將結束";
+        if (state.players.some(p => p.score <= 0)) matchEndReason = "有玩家破產，遊戲結束";
+        
+        html += `<div style="background: rgba(234, 179, 8, 0.15); border: 2px solid #eab308; padding: 20px; border-radius: 10px; margin-bottom: 25px; text-align: center;">
+            <h2 style="color: #fff; margin: 0; font-size: 1.8rem;">🏆 最終贏家：<span style="color: #4ade80;">${matchWinnerName}</span> <span style="font-size: 1.2rem; color: #cbd5e1;">(${bestScore} 分)</span></h2>
+        </div>`;
+    }
+
+    if (s.isDraw) {
+        html += `<h2 style="color:#facc15; font-size: 1.8rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">流局</h2>`;
+    } else {
+        const winner = state.players[s.winner];
+        const loser = state.players[s.loser];
+        
+        let titleText = `${winner.name} 胡牌！`;
+        if (!s.isSelfDraw) {
+            titleText += ` (${loser.name} 放槍)`;
+        } else {
+            titleText += ` (自摸)`;
+        }
+        
+        html += `<h2 style="color:#facc15; font-size: 1.8rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 20px;">${titleText}</h2>`;
+        
+        // 顯示胡牌者的手牌與吃碰槓 (全部平鋪，讓 flex-wrap 處理換行)
+        html += `<div class="settlement-hand-display">`;
+        state.melds[s.winner].forEach(meld => {
+            html += `<div class="meld-group" style="display:flex; gap:2px; margin-right:10px;">`;
+            meld.tiles.forEach(t => html += `<div class="tile">${getTileHTML(t)}</div>`);
+            html += `</div>`;
+        });
+        
+        html += `<div class="hand-group" style="display:flex; gap:2px;">`;
+        const winnerHand = state.hands[s.winner];
+        winnerHand.forEach((t, idx) => {
+            if (idx === winnerHand.length - 1) {
+                html += `<div class="tile drawn-tile" style="margin-left: 15px;">${getTileHTML(t)}</div>`;
+            } else {
+                html += `<div class="tile">${getTileHTML(t)}</div>`;
+            }
+        });
+        html += `</div></div>`;
+        
+        // 顯示台數明細
+        if (s.taiDetails) {
+            const totalAmount = s.baseScore + (s.totalTai * s.taiScore);
+            html += `<div style="margin-top:20px; text-align:center;">`;
+            html += `<p style="font-size:1.2rem; margin:10px 0;">台數：<span style="color:#facc15; font-weight:bold;">${s.totalTai} 台</span> <span style="color:#cbd5e1; font-size:1rem;">(底${s.baseScore}+${s.totalTai}台×${s.taiScore} = ${totalAmount})</span></p>`;
+            
+            let detailNames = "無";
+            if (s.taiDetails.length > 0) {
+                detailNames = s.taiDetails.map(d => {
+                    const explain = TAI_EXPLANATIONS[d.name] || '無特別說明';
+                    const taiStr = d.tai > 0 ? ` (${d.tai}台)` : '';
+                    const baseName = d.name.split(' (')[0]; // 若有附加說明，例如正花 (春)
+                    const explainFinal = TAI_EXPLANATIONS[baseName] || explain;
+                    return `<span class="tai-tooltip">${d.name}${taiStr}<span class="tai-tooltip-text">${explainFinal}</span></span>`;
+                }).join('、');
+            }
+            html += `<p style="color:#cbd5e1; margin:15px 0; line-height:2;">台數明細：${detailNames}</p>`;
+            html += `</div>`;
+        }
+    }
+
+    html += `<table style="width:100%; text-align:left; margin-top:30px; border-collapse: collapse;">`;
+    state.players.forEach((p, idx) => {
+        const change = s.scoreChanges[idx];
+        const color = change > 0 ? '#4ade80' : (change < 0 ? '#ef4444' : '#fff');
+        const sign = change > 0 ? '+' : '';
+        html += `<tr>
+            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); width:40%;">${p.name}</td>
+            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); text-align:right; color:${color}; width:30%;">${sign}${change}</td>
+            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); text-align:right; color:#facc15; width:30%;">→ $${state.scores[idx]}</td>
+        </tr>`;
+    });
+    html += `</table>`;
+
+    if (state.isMatchOver) {
+        html += `<p style="margin-top:20px; color:#ef4444; font-size: 1.2rem; font-weight: bold;">遊戲結束！</p>`;
+    } else if (s.dealerChanged) {
+        html += `<p style="margin-top:20px; color:#94a3b8;">下莊！下一局莊家換人。</p>`;
+    } else if (!s.isDraw) {
+        html += `<p style="margin-top:20px; color:#facc15;">莊家胡牌，連莊！</p>`;
+    }
+
+    UI.settlementContent.innerHTML = html;
+    
+    if (state.isMatchOver) {
+        UI.btnNextRound.classList.add('hidden');
+        if (!document.getElementById('btn-settlement-back')) {
+            const backBtn = document.createElement('button');
+            backBtn.id = 'btn-settlement-back';
+            backBtn.className = 'primary';
+            backBtn.innerText = '🚪 返回大廳';
+            backBtn.style.background = '#ef4444';
+            backBtn.addEventListener('click', () => {
+                location.reload();
+            });
+            UI.btnNextRound.parentElement.appendChild(backBtn);
+        }
+    } else {
+        if (network.isHost) {
+            UI.btnNextRound.classList.remove('hidden');
+        } else {
+            UI.btnNextRound.classList.add('hidden');
+            UI.settlementContent.innerHTML += `<p style="margin-top:20px; font-size:0.9rem;">等待房主開始下一局...</p>`;
+        }
+    }
+}
+
+// 使用 SVG 圖片產生牌面
+function getTileHTML(tile) {
+    if (tile.svgUrl) {
+        return `<img src="${tile.svgUrl}" class="tile-img" alt="${tile.displayVal}">`;
+    }
+    return ''; // 如果出錯，回傳空字串
+}
+
+function renderHand(position, handData, isMe, isMyTurn) {
+    const container = UI.hands[position];
+    container.innerHTML = '';
+    const hasDrawnTile = (handData.length % 3 === 2);
+    
+    handData.forEach((tile, idx) => {
+        const tileDiv = document.createElement('div');
+        tileDiv.className = 'tile';
+        
+        // 如果是剛摸到的牌（手牌數為17, 14, 11... 的最後一張），加上特殊 class 來拉開距離
+        if (hasDrawnTile && idx === handData.length - 1) {
+            tileDiv.classList.add('drawn-tile');
+        }
+        
+        if (isMe) {
+            tileDiv.innerHTML = getTileHTML(tile);
+            if (isMyTurn) {
+                tileDiv.addEventListener('click', () => {
+                    network.sendAction('discard', { tileId: tile.id });
+                });
+            }
+        } else {
+            tileDiv.classList.add('hidden-tile');
+        }
+        container.appendChild(tileDiv);
+    });
+}
+
+function renderMelds(position, meldData, isMe) {
+    const container = UI.melds[position];
+    container.innerHTML = '';
+    
+    meldData.forEach(meld => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'meld-group';
+        
+        meld.tiles.forEach(tile => {
+            const tileDiv = document.createElement('div');
+            tileDiv.className = 'tile meld-tile';
+            tileDiv.innerHTML = getTileHTML(tile);
+            groupDiv.appendChild(tileDiv);
+        });
+        
+        container.appendChild(groupDiv);
+    });
+}
+
+function renderDiscardPool(discardPool) {
+    UI.discardPool.innerHTML = '';
+    discardPool.forEach(tile => {
+        const tileDiv = document.createElement('div');
+        tileDiv.className = 'tile discard-tile';
+        tileDiv.innerHTML = getTileHTML(tile);
+        UI.discardPool.appendChild(tileDiv);
+    });
+}
+
+function handlePendingActions(state, myIndex) {
+    const pendingActions = state.pendingActions;
+    if (!pendingActions) return;
+    const myAction = pendingActions.find(p => p.playerIndex === myIndex);
+    
+    if (myAction && !myAction.responded) {
+        UI.actionBar.classList.remove('hidden');
+        UI.actionButtons.innerHTML = '';
+        UI.chowOptionsContainer.innerHTML = '';
+        UI.chowOptionsContainer.classList.add('hidden');
+
+        if (myAction.canHu) addActionButton('胡', 'btn-hu', 'HU');
+        if (myAction.canKong) addActionButton('槓', 'btn-kong', 'KONG');
+        if (myAction.canPong) addActionButton('碰', 'btn-pong', 'PONG');
+        
+        if (myAction.canChow) {
+            const btn = addActionButton('吃', 'btn-chow', 'CHOW', false);
+            btn.addEventListener('click', () => showChowOptions(myAction.canChow));
+        }
+
+        addActionButton('跳過', 'btn-skip', 'SKIP');
+    } else {
+        // 避免在自己回合可以自摸或暗槓時，被這個函數把 actionBar 隱藏
+        let canSelfAction = false;
+        if (state.gameState === 'PLAYING' && state.currentTurn === myIndex) {
+            if ((state.selfDrawFlags && state.selfDrawFlags[myIndex]) || (state.selfKongOptions && state.selfKongOptions[myIndex] && state.selfKongOptions[myIndex].length > 0)) {
+                canSelfAction = true;
+            }
+        }
+        if (!canSelfAction) {
+            UI.actionBar.classList.add('hidden');
+        }
+    }
+}
+
+function addActionButton(label, className, actionStr, sendDirectly = true) {
+    const btn = document.createElement('button');
+    btn.className = `action-btn ${className}`;
+    btn.innerText = label;
+    
+    if (sendDirectly) {
+        btn.addEventListener('click', () => {
+            UI.actionBar.classList.add('hidden');
+            network.sendAction('respond', { actionStr: actionStr, data: null });
+        });
+    }
+    UI.actionButtons.appendChild(btn);
+    return btn;
+}
+
+function showChowOptions(options) {
+    UI.actionButtons.innerHTML = ''; 
+    UI.chowOptionsContainer.innerHTML = '';
+    UI.chowOptionsContainer.classList.remove('hidden');
+    
+    options.forEach(opt => {
+        const optDiv = document.createElement('div');
+        optDiv.className = 'chow-option';
+        
+        opt.forEach(t => {
+            const tileDiv = document.createElement('div');
+            tileDiv.className = 'tile meld-tile';
+            tileDiv.innerHTML = getTileHTML(t);
+            optDiv.appendChild(tileDiv);
+        });
+        
+        optDiv.addEventListener('click', () => {
+            UI.actionBar.classList.add('hidden');
+            network.sendAction('respond', { actionStr: 'CHOW', data: opt });
+        });
+        UI.chowOptionsContainer.appendChild(optDiv);
+    });
+
+    const cancelBtn = addActionButton('取消', 'btn-skip', 'SKIP', false);
+    cancelBtn.addEventListener('click', () => {
+        UI.actionBar.classList.add('hidden');
+        network.sendAction('respond', { actionStr: 'SKIP', data: null });
+    });
+    UI.chowOptionsContainer.appendChild(cancelBtn);
+}
+
+// �ˬd�O�_���_�u�T��
+const disconnectMsg = sessionStorage.getItem('disconnectMsg');
+if (disconnectMsg) {
+    sessionStorage.removeItem('disconnectMsg');
+    if (window.showNotification) showNotification(disconnectMsg, true);
+}
