@@ -7,6 +7,53 @@ const screens = {
     settlement: document.getElementById('settlement-screen')
 };
 
+let progressInterval;
+function startLoadingProgress() {
+    const container = document.getElementById('lobby-progress-container');
+    const bar = document.getElementById('lobby-progress-bar');
+    if(container && bar) {
+        container.style.display = 'block';
+        bar.style.transition = 'none';
+        bar.style.width = '0%';
+        bar.style.background = '#10b981';
+        
+        setTimeout(() => {
+            bar.style.transition = 'width 1s linear';
+        }, 50);
+
+        let progress = 0;
+        progressInterval = setInterval(() => {
+            if(progress < 90) {
+                progress += (90 - progress) * 0.05;
+                bar.style.width = progress + '%';
+            }
+        }, 1000);
+    }
+}
+
+function stopLoadingProgress(success) {
+    const container = document.getElementById('lobby-progress-container');
+    const bar = document.getElementById('lobby-progress-bar');
+    if(progressInterval) clearInterval(progressInterval);
+    
+    if(container && bar) {
+        if (success) {
+            bar.style.transition = 'width 0.2s linear';
+            bar.style.width = '100%';
+            setTimeout(() => {
+                container.style.display = 'none';
+                bar.style.width = '0%';
+            }, 500);
+        } else {
+            bar.style.background = '#ef4444';
+            setTimeout(() => {
+                container.style.display = 'none';
+                bar.style.background = '#10b981';
+            }, 2000);
+        }
+    }
+}
+
 const UI = {
     playerName: document.getElementById('player-name'),
     botSpeed: document.getElementById('bot-speed'),
@@ -340,6 +387,7 @@ UI.btnCreate.addEventListener('click', async () => {
     try { localStorage.setItem('mj_playerName', name); } catch(e) {}
     UI.lobbyStatus.innerText = '正在建立房間...';
     UI.btnCreate.disabled = true;
+    startLoadingProgress();
     
     const gameLength = document.getElementById('game-length-select-lobby').value;
     
@@ -347,10 +395,12 @@ UI.btnCreate.addEventListener('click', async () => {
     network.isLocalSinglePlayer = false;
     try {
         const roomId = await network.createRoom(name, gameLength);
+        stopLoadingProgress(true);
         UI.displayRoomCode.innerText = roomId;
         showScreen('waiting');
         updatePlayerList(network.game.players, { botSpeed: network.botSpeed, gameLength: network.gameLength });
     } catch (err) {
+        stopLoadingProgress(false);
         UI.lobbyStatus.innerText = '建立房間失敗：' + err.message;
         UI.btnCreate.disabled = false;
     }
@@ -364,14 +414,17 @@ UI.btnJoin.addEventListener('click', async () => {
     try { localStorage.setItem('mj_playerName', name); } catch(e) {}
     UI.lobbyStatus.innerText = '正在加入房間...';
     UI.btnJoin.disabled = true;
+    startLoadingProgress();
 
     network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
     network.isLocalSinglePlayer = false;
     try {
         await network.joinRoom(code, name);
+        stopLoadingProgress(true);
         UI.displayRoomCode.innerText = code;
         showScreen('waiting');
     } catch (err) {
+        stopLoadingProgress(false);
         UI.lobbyStatus.innerText = '加入房間失敗：' + err.message;
         UI.btnJoin.disabled = false;
     }
