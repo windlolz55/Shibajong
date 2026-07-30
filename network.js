@@ -34,7 +34,7 @@ class MahjongNetwork {
             const fullRoomId = 'shibajong_tw_' + roomId;
             
             const peerConfig = {
-                host: 'peerjs.92k.de',
+                host: 'shibajong.onrender.com',
                 port: 443,
                 secure: true,
                 config: {
@@ -78,7 +78,7 @@ class MahjongNetwork {
 
         return new Promise((resolve, reject) => {
             const peerConfig = {
-                host: 'peerjs.92k.de',
+                host: 'shibajong.onrender.com',
                 port: 443,
                 secure: true,
                 config: {
