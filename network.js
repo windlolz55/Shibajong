@@ -34,6 +34,9 @@ class MahjongNetwork {
             const fullRoomId = 'shibajong_tw_' + roomId;
             
             const peerConfig = {
+                host: 'peerjs.92k.de',
+                port: 443,
+                secure: true,
                 config: {
                     'iceServers': [
                         { urls: 'stun:stun.l.google.com:19302' },
@@ -75,6 +78,9 @@ class MahjongNetwork {
 
         return new Promise((resolve, reject) => {
             const peerConfig = {
+                host: 'peerjs.92k.de',
+                port: 443,
+                secure: true,
                 config: {
                     'iceServers': [
                         { urls: 'stun:stun.l.google.com:19302' },
@@ -374,13 +380,14 @@ class MahjongNetwork {
             const isTenpai = state.tenpaiStatus && state.tenpaiStatus[state.currentTurn];
             if (currentPlayer.isBot || isTenpai) {
                 state.timerEnabled = true;
+                const offset = 1500;
                 if (shouldResetTimer) {
-                    // 聽牌後人類自動打牌的速度可以快一點 (例如 1000ms)，如果是電腦則照原本設定
-                    const delay = isTenpai && !currentPlayer.isBot ? 1000 : (this.botSpeed + 1500);
-                    this.globalDeadline = Date.now() + delay;
+                    // 聽牌後人類自動摸打時間可短一點(例如1000ms)，如果是電腦則照原本設定
+                    const baseTime = isTenpai && !currentPlayer.isBot ? 1000 : this.botSpeed;
+                    this.globalDeadline = Date.now() + baseTime + offset;
                 }
                 state.deadline = this.globalDeadline;
-                state.visualDelay = shouldResetTimer ? 1000 : 0;
+                state.visualDelay = shouldResetTimer ? offset : 0;
             } else {
                 const isRecentAction = state.actionEvent && (Date.now() - state.actionEvent.timestamp < 1000);
                 const delay = (shouldResetTimer && isRecentAction) ? 1500 : 0;
