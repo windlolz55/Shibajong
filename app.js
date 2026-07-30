@@ -9,46 +9,35 @@ const screens = {
 
 let progressInterval;
 function startLoadingProgress() {
-    const container = document.getElementById('lobby-progress-container');
-    const bar = document.getElementById('lobby-progress-bar');
-    if(container && bar) {
-        container.style.display = 'block';
-        bar.style.transition = 'none';
-        bar.style.width = '0%';
-        bar.style.background = '#10b981';
-        
-        setTimeout(() => {
-            bar.style.transition = 'width 1s linear';
-        }, 50);
-
+    const textSpan = document.getElementById('lobby-progress-text');
+    if(textSpan) {
+        textSpan.style.color = '#10b981';
+        textSpan.innerText = '(0%)';
         let progress = 0;
         progressInterval = setInterval(() => {
-            if(progress < 90) {
-                progress += (90 - progress) * 0.05;
-                bar.style.width = progress + '%';
+            if(progress < 99) {
+                progress += (99 - progress) * 0.08;
+                textSpan.innerText = '(' + Math.floor(progress) + '%)';
             }
         }, 1000);
     }
 }
 
 function stopLoadingProgress(success) {
-    const container = document.getElementById('lobby-progress-container');
-    const bar = document.getElementById('lobby-progress-bar');
+    const textSpan = document.getElementById('lobby-progress-text');
     if(progressInterval) clearInterval(progressInterval);
     
-    if(container && bar) {
+    if(textSpan) {
         if (success) {
-            bar.style.transition = 'width 0.2s linear';
-            bar.style.width = '100%';
+            textSpan.innerText = '(100%)';
             setTimeout(() => {
-                container.style.display = 'none';
-                bar.style.width = '0%';
+                textSpan.innerText = '';
             }, 500);
         } else {
-            bar.style.background = '#ef4444';
+            textSpan.style.color = '#ef4444';
+            textSpan.innerText = '(失敗)';
             setTimeout(() => {
-                container.style.display = 'none';
-                bar.style.background = '#10b981';
+                textSpan.innerText = '';
             }, 2000);
         }
     }
