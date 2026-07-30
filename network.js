@@ -31,9 +31,31 @@ class MahjongNetwork {
 
         return new Promise((resolve, reject) => {
             const roomId = Math.floor(1000 + Math.random() * 9000).toString();
-            this.peer = new Peer(roomId);
+            const fullRoomId = 'shibajong_tw_' + roomId;
+            
+            const peerConfig = {
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        {
+                            urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        }
+                    ]
+                }
+            };
+            
+            this.peer = new Peer(fullRoomId, peerConfig);
 
-            this.peer.on('open', (id) => resolve(id));
+            this.peer.on('open', (id) => resolve(roomId));
             this.peer.on('connection', (conn) => {
                 if (this.game.players.length >= 4) {
                     conn.send({ type: 'error', message: '房間已滿' });
@@ -52,9 +74,30 @@ class MahjongNetwork {
         this.isHost = false;
 
         return new Promise((resolve, reject) => {
-            this.peer = new Peer();
+            const peerConfig = {
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        {
+                            urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        }
+                    ]
+                }
+            };
+            
+            this.peer = new Peer(peerConfig);
             this.peer.on('open', (id) => {
-                this.hostConnection = this.peer.connect(roomId);
+                const fullRoomId = 'shibajong_tw_' + roomId;
+                this.hostConnection = this.peer.connect(fullRoomId);
                 this.hostConnection.on('open', () => {
                     this.hostConnection.send({ type: 'join', playerName: this.playerName });
                     resolve();
