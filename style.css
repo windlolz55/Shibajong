@@ -285,11 +285,11 @@ button.primary:hover {
     background: #f3f4f6;
 }
 
-/* 剛摸到的牌（在手牌最後面）隔開一整張牌的距離 */
-.player-area.bottom .drawn-tile { margin-left: calc(var(--my-tile-width) * 0.5); }
-.player-area.top .drawn-tile { margin-left: calc(var(--tile-width) * 0.5); }
-.player-area.left .drawn-tile { margin-top: calc(var(--tile-width) * 0.65); }
-.player-area.right .drawn-tile { margin-top: calc(var(--tile-width) * 0.65); }
+/* 剛摸的牌（在手牌最右邊）拉開一點間距 */
+.player-area.bottom-player .drawn-tile { margin-left: calc(var(--my-tile-width) * 0.5); }
+.player-area.top-player .drawn-tile { margin-left: calc(var(--tile-width) * 0.5); }
+.player-area.left-player .drawn-tile { margin-top: calc(var(--tile-width) * 0.65); }
+.player-area.right-player .drawn-tile { margin-top: calc(var(--tile-width) * 0.65); }
 
 /* 背面 */
 .hidden-tile {
