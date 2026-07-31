@@ -248,6 +248,9 @@ window.showEmote = function(playerIndex, text) {
         if (text === '度！') {
             const audio = new Audio('du.mp3');
             audio.play().catch(e => console.error("Audio play failed:", e));
+        } else if (text === 'dllm') {
+            const audio = new Audio('dllm.mp3');
+            audio.play().catch(e => console.error("Audio play failed:", e));
         } else if (window.speechSynthesis) {
             window.speechSynthesis.cancel(); // Clear any previous unplayed voices to prevent overlap/spam
             const utterance = new SpeechSynthesisUtterance(text);
