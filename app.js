@@ -10,6 +10,9 @@ const screens = {
 let progressInterval;
 function startLoadingProgress() {
     const textSpan = document.getElementById('lobby-progress-text');
+    const tipDiv = document.getElementById('lobby-wait-tip');
+    if(tipDiv) tipDiv.style.display = 'block';
+    
     if(textSpan) {
         textSpan.style.color = '#10b981';
         textSpan.innerText = '(0%)';
@@ -25,6 +28,7 @@ function startLoadingProgress() {
 
 function stopLoadingProgress(success) {
     const textSpan = document.getElementById('lobby-progress-text');
+    const tipDiv = document.getElementById('lobby-wait-tip');
     if(progressInterval) clearInterval(progressInterval);
     
     if(textSpan) {
@@ -32,12 +36,14 @@ function stopLoadingProgress(success) {
             textSpan.innerText = '(100%)';
             setTimeout(() => {
                 textSpan.innerText = '';
+                if(tipDiv) tipDiv.style.display = 'none';
             }, 500);
         } else {
             textSpan.style.color = '#ef4444';
             textSpan.innerText = '(失敗)';
             setTimeout(() => {
                 textSpan.innerText = '';
+                if(tipDiv) tipDiv.style.display = 'none';
             }, 2000);
         }
     }

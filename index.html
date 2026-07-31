@@ -62,15 +62,17 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.45<br>made by Kittenz
+                        當前版本：v2.50<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
                     </div>
+                </div>
                 <p style="margin-top: 15px; color: #facc15;">
                     <span id="lobby-status"></span>
                     <span id="lobby-progress-text" style="color: #10b981; font-weight: bold; margin-left: 8px;"></span>
                 </p>
+                <div id="lobby-wait-tip" style="font-size: 11px; color: #94a3b8; margin-top: 5px; display: none;">* 每日首次連線需等待較長時間</div>
             </div>
         </div>
 
@@ -146,10 +148,10 @@
                         <option value="gang_shang_kai_hua">槓上開花 (測槓牌)</option>
                     </optgroup>
                 </select>
-                <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
-                    <button id="btn-cheat-apply" style="background:#10b981; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap; width: max-content;">🪄 變牌</button>
-                    <button id="btn-force-draw" style="background:#f59e0b; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap; width: max-content;">🤝 強制流局</button>
-                    <button id="btn-force-win" style="background:#8b5cf6; color:#fff; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-weight: bold; white-space: nowrap; width: max-content;">🏆 強制胡牌</button>
+                <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start; max-width: 250px;">
+                    <button id="btn-cheat-apply" style="background:#10b981; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight: bold; width: max-content;">🪄 變牌</button>
+                    <button id="btn-force-draw" style="background:#f59e0b; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight: bold; width: max-content;">🏳️ 流局</button>
+                    <button id="btn-force-win" style="background:#8b5cf6; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight: bold; width: max-content;">🏆 胡牌</button>
                 </div>
             </div>
 
@@ -322,8 +324,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.45"></script>
-    <script src="network.js?v=2.45"></script>
-    <script src="app.js?v=2.45"></script>
+    <script src="game.js?v=2.50"></script>
+    <script src="network.js?v=2.50"></script>
+    <script src="app.js?v=2.50"></script>
 </body>
 </html>
