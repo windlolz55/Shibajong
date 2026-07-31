@@ -30,6 +30,10 @@ class MahjongNetwork {
         this.game.players.push({ name: playerName, index: 0, id: 'host', isBot: false });
 
         return new Promise((resolve, reject) => {
+            if (this.isLocalSinglePlayer) {
+                return resolve('local');
+            }
+
             const roomId = Math.floor(1000 + Math.random() * 9000).toString();
             const fullRoomId = 'shibajong_tw_' + roomId;
             
