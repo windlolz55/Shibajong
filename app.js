@@ -152,10 +152,21 @@ if (UI.btnEmote) {
 if (UI.emotePanel) {
     UI.emotePanel.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
+            if (e.target.id === 'btn-emote-next') {
+                document.getElementById('emote-page-1').style.display = 'none';
+                document.getElementById('emote-page-2').style.display = 'flex';
+                return;
+            }
+            if (e.target.id === 'btn-emote-prev') {
+                document.getElementById('emote-page-1').style.display = 'flex';
+                document.getElementById('emote-page-2').style.display = 'none';
+                return;
+            }
+
             const now = Date.now();
             if (now - myLastEmoteTime < 5000) {
                 const timeLeft = Math.ceil((5000 - (now - myLastEmoteTime)) / 1000);
-                if (window.showNotification) window.showNotification(`太快了！請等待 ${timeLeft} 秒`, true);
+                if (window.showNotification) window.showNotification(`太快了！請等 ${timeLeft} 秒`, true);
                 return;
             }
             myLastEmoteTime = now;
@@ -163,6 +174,11 @@ if (UI.emotePanel) {
             const text = e.target.getAttribute('data-text');
             network.sendAction('emote', { text: text });
             UI.emotePanel.style.display = 'none';
+            // 關閉時重置回第一頁
+            const page1 = document.getElementById('emote-page-1');
+            const page2 = document.getElementById('emote-page-2');
+            if(page1) page1.style.display = 'flex';
+            if(page2) page2.style.display = 'none';
         }
     });
 }
@@ -250,6 +266,12 @@ window.showEmote = function(playerIndex, text) {
             audio.play().catch(e => console.error("Audio play failed:", e));
         } else if (text === 'dllm') {
             const audio = new Audio('dllm.mp3');
+            audio.play().catch(e => console.error("Audio play failed:", e));
+        } else if (text === '陽光彩虹小白馬') {
+            const audio = new Audio('Sunshine, Rainbow, White Pony.mp3');
+            audio.play().catch(e => console.error("Audio play failed:", e));
+        } else if (text === '葳葳孟孟') {
+            const audio = new Audio('Wei & Meng.mp3');
             audio.play().catch(e => console.error("Audio play failed:", e));
         } else if (window.speechSynthesis) {
             window.speechSynthesis.cancel(); // Clear any previous unplayed voices to prevent overlap/spam
@@ -1361,4 +1383,8 @@ document.addEventListener('mouseover', function(e) {
         }
     }
 });
+
+
+// Pre-wake Render Server on page load
+fetch('https://shibajong.onrender.com').catch(e => {});
 

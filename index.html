@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.53<br>made by Kittenz
+                        當前版本：v2.55<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -233,11 +233,19 @@
             <button class="circle-btn" id="btn-emote" style="bottom: calc(30px + clamp(30px, 8vw, 40px)); left: 20px; color: #38bdf8; border-color: #38bdf8;">💬</button>
             
             <div id="emote-panel" style="position: absolute; bottom: calc(40px + clamp(60px, 16vw, 80px)); left: 20px; background: rgba(15,23,42,0.95); border: 1px solid #38bdf8; padding: 10px; border-radius: 12px; display: none; flex-direction: column; gap: 8px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.8); width: 200px;">
-                <button class="btn-emote-option" data-text="要吠來twitch陳景路吠" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">要吠來twitch陳景路吠</button>
-                <button class="btn-emote-option" data-text="沒救 繼續沉淪" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">沒救 繼續沉淪</button>
-                <button class="btn-emote-option" data-text="這把穩了" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">這把穩了</button>
-                <button class="btn-emote-option" data-text="度！" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">度！</button>
-                <button class="btn-emote-option" data-text="dllm" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">dllm</button>
+                <div id="emote-page-1" style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn-emote-option" data-text="要吠來twitch陳景路吠" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">要吠來twitch陳景路吠</button>
+                    <button class="btn-emote-option" data-text="沒救 繼續沉淪" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">沒救 繼續沉淪</button>
+                    <button class="btn-emote-option" data-text="這把穩了" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">這把穩了</button>
+                    <button class="btn-emote-option" data-text="度！" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">度！</button>
+                    <button id="btn-emote-next" style="background: rgba(56,189,248,0.2); border: none; color: #38bdf8; padding: 8px; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.9rem; font-weight: bold; margin-top: 4px; transition: background 0.2s;">下一頁 ➡</button>
+                </div>
+                <div id="emote-page-2" style="display: none; flex-direction: column; gap: 8px;">
+                    <button class="btn-emote-option" data-text="dllm" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">dllm</button>
+                    <button class="btn-emote-option" data-text="陽光彩虹小白馬" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">陽光彩虹小白馬</button>
+                    <button class="btn-emote-option" data-text="葳葳孟孟" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">葳葳孟孟</button>
+                    <button id="btn-emote-prev" style="background: rgba(56,189,248,0.2); border: none; color: #38bdf8; padding: 8px; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.9rem; font-weight: bold; margin-top: 4px; transition: background 0.2s;">⬅ 上一頁</button>
+                </div>
             </div>
             
             <div id="tai-ref-panel" style="position: absolute; bottom: 70px; left: 20px; background: rgba(0,0,0,0.9); border: 1px solid #475569; padding: 15px; border-radius: 8px; color: #fff; z-index: 200; width: 320px; max-height: 60vh; overflow-y: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.8); font-size: 0.85rem; line-height: 1.4;">
@@ -325,8 +333,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.53"></script>
-    <script src="network.js?v=2.53"></script>
-    <script src="app.js?v=2.53"></script>
+    <script src="game.js?v=2.55"></script>
+    <script src="network.js?v=2.55"></script>
+    <script src="app.js?v=2.55"></script>
 </body>
 </html>
