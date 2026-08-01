@@ -476,7 +476,8 @@ class MahjongGame {
         this.winner = winnerIndex;
         
         const isSelfDraw = (winnerIndex === loserIndex); // 自摸
-        const winningTile = isSelfDraw ? this.hands[winnerIndex][this.hands[winnerIndex].length - 1] : this.discardPool[this.discardPool.length - 1];
+        // 無論是自摸還是別人放槍，這張胡的牌都會被加到 winner 的 hands 最後面
+        const winningTile = this.hands[winnerIndex][this.hands[winnerIndex].length - 1];
         
         const taiData = this.calculateTai(winnerIndex, winningTile, isSelfDraw, loserIndex);
         let scoreChange = 50 + (taiData.totalTai * 20); // 底 50，一台 20
@@ -627,6 +628,19 @@ class MahjongGame {
             }
         }
         
+        // 3. 獨聽
+        // 此時手牌(hand)已經包含最後那張胡牌(總長17張或以上)，我們必須先把最後一張移除，才能正確計算他原本在聽什麼牌
+        const originalHand = [...hand];
+        originalHand.pop();
+        this.hands[playerIndex] = originalHand;
+        let waitTiles = this.getWaitTiles(playerIndex);
+        this.hands[playerIndex] = hand; // 算完再加回來
+        
+        if (waitTiles.length === 1) {
+            details.push({ name: '單聽', tai: 1 });
+            totalTai += 1;
+        }
+        
         // 全求人 / 半求人
         if (melds.length === 5) {
             if (isSelfDraw) {
@@ -641,23 +655,6 @@ class MahjongGame {
         // 槓上開花
         if (isSelfDraw && this.isKongReplacement) {
             details.push({ name: '槓上開花', tai: 1 });
-            totalTai += 1;
-        }
-
-        // 3. 獨聽
-        let waitTiles = [];
-        if (isSelfDraw) {
-            const originalHand = [...hand];
-            originalHand.pop();
-            this.hands[playerIndex] = originalHand;
-            waitTiles = this.getWaitTiles(playerIndex);
-            this.hands[playerIndex] = hand;
-        } else {
-            waitTiles = this.getWaitTiles(playerIndex);
-        }
-        
-        if (waitTiles.length === 1) {
-            details.push({ name: '單聽', tai: 1 });
             totalTai += 1;
         }
         
