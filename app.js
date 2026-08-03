@@ -116,6 +116,20 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch (e) {
         console.warn("localStorage not available:", e);
     }
+
+    // 檢查網址是否帶有房間參數 ?room=XXXX
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+        if (roomParam && UI.roomCodeInput) {
+            UI.roomCodeInput.value = roomParam.trim();
+            if (UI.lobbyStatus) {
+                UI.lobbyStatus.innerText = `已自動帶入邀請房間 [${roomParam.trim()}]，點擊加入即可！`;
+            }
+        }
+    } catch (e) {
+        console.warn("URLSearchParams parse error:", e);
+    }
 });
 
 let network = null;
@@ -417,6 +431,13 @@ UI.btnCreate.addEventListener('click', async () => {
         const roomId = await network.createRoom(name, gameLength);
         stopLoadingProgress(true);
         UI.displayRoomCode.innerText = roomId;
+
+        // 同步更新網址，讓房主也能直接從網址列複製
+        try {
+            const newUrl = window.location.origin + window.location.pathname + '?room=' + roomId;
+            window.history.replaceState(null, '', newUrl);
+        } catch (e) {}
+
         showScreen('waiting');
         updatePlayerList(network.game.players, { botSpeed: network.botSpeed, gameLength: network.gameLength });
     } catch (err) {
@@ -442,6 +463,13 @@ UI.btnJoin.addEventListener('click', async () => {
         await network.joinRoom(code, name);
         stopLoadingProgress(true);
         UI.displayRoomCode.innerText = code;
+
+        // 同步更新網址
+        try {
+            const newUrl = window.location.origin + window.location.pathname + '?room=' + code;
+            window.history.replaceState(null, '', newUrl);
+        } catch (e) {}
+
         showScreen('waiting');
     } catch (err) {
         stopLoadingProgress(false);
@@ -595,9 +623,44 @@ function updatePlayerList(players, settings) {
     }
 }
 
+const btnCopyRoomLink = document.getElementById('btn-copy-room-link');
+if (btnCopyRoomLink) {
+    btnCopyRoomLink.addEventListener('click', async () => {
+        const code = UI.displayRoomCode.innerText.trim();
+        if (!code) return;
+        const inviteUrl = window.location.origin + window.location.pathname + '?room=' + code;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(inviteUrl);
+            } else {
+                const tempInput = document.createElement('input');
+                tempInput.value = inviteUrl;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+            }
+            const origText = btnCopyRoomLink.innerText;
+            btnCopyRoomLink.innerText = '✅ 已複製連結！';
+            btnCopyRoomLink.style.background = '#10b981';
+            btnCopyRoomLink.style.color = '#fff';
+            btnCopyRoomLink.style.borderColor = '#10b981';
+            if (window.showNotification) window.showNotification('已複製邀請網址至剪貼簿！');
+            setTimeout(() => {
+                btnCopyRoomLink.innerText = origText;
+                btnCopyRoomLink.style.background = 'rgba(56, 189, 248, 0.15)';
+                btnCopyRoomLink.style.color = '#38bdf8';
+                btnCopyRoomLink.style.borderColor = '#38bdf8';
+            }, 2000);
+        } catch (err) {
+            prompt('請手動複製邀請網址：', inviteUrl);
+        }
+    });
+}
+
 if (UI.btnLeaveWaiting) {
     UI.btnLeaveWaiting.addEventListener('click', () => {
-        location.reload();
+        window.location.href = window.location.origin + window.location.pathname;
     });
 }
 
@@ -611,7 +674,7 @@ if (UI.btnNextRound) {
 if (UI.btnBackHome) {
     UI.btnBackHome.addEventListener('click', () => {
         if (confirm("確定要返回大廳嗎？連線將會中斷。")) {
-            location.reload();
+            window.location.href = window.location.origin + window.location.pathname;
         }
     });
 }

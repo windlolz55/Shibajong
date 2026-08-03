@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.56<br>made by Kittenz
+                        當前版本：v2.57<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -80,7 +80,10 @@
             <div class="card">
                 <h2 style="margin-top: 0; margin-bottom: 15px;">等待室</h2>
                 <button id="btn-leave-waiting" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:#cbd5e1; padding:5px 15px; border-radius:4px; cursor:pointer; display:inline-block;">↩ 返回</button>
-                <p style="margin-top: 15px;">房間代碼：<span id="display-room-code" style="font-size: 1.5rem; color: #38bdf8; user-select: all;"></span></p>
+                <p style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                    <span>房間代碼：<strong id="display-room-code" style="font-size: 1.5rem; color: #38bdf8; user-select: all;"></strong></span>
+                    <button id="btn-copy-room-link" style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: all 0.2s;">📋 複製邀請網址</button>
+                </p>
                 <div style="margin: 20px 0;">
                     <h3>已加入玩家 (<span id="player-count">1</span>/4)</h3>
                     <ul id="waiting-player-list" style="list-style: none; padding: 0;"></ul>
@@ -333,8 +336,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.56"></script>
-    <script src="network.js?v=2.56"></script>
-    <script src="app.js?v=2.56"></script>
+    <script src="game.js?v=2.57"></script>
+    <script src="network.js?v=2.57"></script>
+    <script src="app.js?v=2.57"></script>
 </body>
 </html>
