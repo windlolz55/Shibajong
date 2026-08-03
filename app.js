@@ -629,23 +629,24 @@ if (btnCopyRoomLink) {
         const code = UI.displayRoomCode.innerText.trim();
         if (!code) return;
         const inviteUrl = window.location.origin + window.location.pathname + '?room=' + code;
+        const inviteText = `🀄 快來陪我打麻將！\n房間代碼：${code}\n點擊下方連結立即加入房間：\n${inviteUrl}`;
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText(inviteUrl);
+                await navigator.clipboard.writeText(inviteText);
             } else {
-                const tempInput = document.createElement('input');
-                tempInput.value = inviteUrl;
+                const tempInput = document.createElement('textarea');
+                tempInput.value = inviteText;
                 document.body.appendChild(tempInput);
                 tempInput.select();
                 document.execCommand('copy');
                 document.body.removeChild(tempInput);
             }
             const origText = btnCopyRoomLink.innerText;
-            btnCopyRoomLink.innerText = '✅ 已複製連結！';
+            btnCopyRoomLink.innerText = '✅ 已複製邀請訊息！';
             btnCopyRoomLink.style.background = '#10b981';
             btnCopyRoomLink.style.color = '#fff';
             btnCopyRoomLink.style.borderColor = '#10b981';
-            if (window.showNotification) window.showNotification('已複製邀請網址至剪貼簿！');
+            if (window.showNotification) window.showNotification('已複製邀請訊息至剪貼簿！');
             setTimeout(() => {
                 btnCopyRoomLink.innerText = origText;
                 btnCopyRoomLink.style.background = 'rgba(56, 189, 248, 0.15)';
@@ -653,7 +654,7 @@ if (btnCopyRoomLink) {
                 btnCopyRoomLink.style.borderColor = '#38bdf8';
             }, 2000);
         } catch (err) {
-            prompt('請手動複製邀請網址：', inviteUrl);
+            prompt('請手動複製邀請訊息：', inviteText);
         }
     });
 }
