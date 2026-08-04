@@ -77,7 +77,7 @@ const UI = {
     btnCloseTai: document.getElementById('btn-close-tai'),
     taiRefPanel: document.getElementById('tai-ref-panel'),
     btnEmote: document.getElementById('btn-emote'),
-    emotePanel: document.getElementById('emote-panel'),
+    chatPanel: document.getElementById('chat-panel'),
     deckCount: document.getElementById('deck-count'),
     turnText: document.getElementById('turn-text'),
     turnTimer: document.getElementById('turn-timer'),
@@ -108,6 +108,8 @@ const UI = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
+    ChatManager.init();
+
     try {
         const savedName = localStorage.getItem('mj_playerName');
         if (savedName && UI.playerName) {
@@ -147,64 +149,238 @@ function toggleMute() {
     }
 }
 
+// --- 聊天室與快捷語音管理員 (ChatManager) ---
+const ChatManager = {
+    messages: [],
+    unreadCount: 0,
+    isPanelOpen: false,
+    myLastEmoteTime: 0,
+
+    init() {
+        // 等待室發送
+        const waitingSendBtn = document.getElementById('btn-waiting-chat-send');
+        const waitingInput = document.getElementById('waiting-chat-input');
+        if (waitingSendBtn && waitingInput) {
+            waitingSendBtn.addEventListener('click', () => this.sendMessageFrom(waitingInput));
+            waitingInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendMessageFrom(waitingInput);
+                }
+            });
+        }
+
+        // 遊戲內發送
+        const gameSendBtn = document.getElementById('btn-in-game-chat-send');
+        const gameInput = document.getElementById('in-game-chat-input');
+        if (gameSendBtn && gameInput) {
+            gameSendBtn.addEventListener('click', () => this.sendMessageFrom(gameInput));
+            gameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.sendMessageFrom(gameInput);
+                }
+            });
+        }
+
+        // 遊戲內分頁切換 (聊天 / 快捷)
+        const tabChat = document.getElementById('tab-btn-chat');
+        const tabQuick = document.getElementById('tab-btn-quick');
+        const contentChat = document.getElementById('chat-tab-content');
+        const contentQuick = document.getElementById('quick-tab-content');
+
+        if (tabChat && tabQuick && contentChat && contentQuick) {
+            tabChat.addEventListener('click', () => {
+                tabChat.classList.add('active');
+                tabQuick.classList.remove('active');
+                contentChat.style.display = 'block';
+                contentQuick.style.display = 'none';
+            });
+            tabQuick.addEventListener('click', () => {
+                tabQuick.classList.add('active');
+                tabChat.classList.remove('active');
+                contentChat.style.display = 'none';
+                contentQuick.style.display = 'block';
+            });
+        }
+
+        // 快捷罐頭點擊與翻頁
+        const chatPanel = document.getElementById('chat-panel');
+        if (chatPanel) {
+            chatPanel.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target.id === 'btn-emote-next') {
+                    const p1 = document.getElementById('emote-page-1');
+                    const p2 = document.getElementById('emote-page-2');
+                    if (p1) p1.style.display = 'none';
+                    if (p2) p2.style.display = 'flex';
+                    return;
+                }
+                if (target.id === 'btn-emote-prev') {
+                    const p1 = document.getElementById('emote-page-1');
+                    const p2 = document.getElementById('emote-page-2');
+                    if (p1) p1.style.display = 'flex';
+                    if (p2) p2.style.display = 'none';
+                    return;
+                }
+
+                if (target.classList.contains('btn-emote-option')) {
+                    const now = Date.now();
+                    if (now - this.myLastEmoteTime < 3000) {
+                        const timeLeft = Math.ceil((3000 - (now - this.myLastEmoteTime)) / 1000);
+                        if (window.showNotification) window.showNotification(`發言冷卻中，請等 ${timeLeft} 秒`, true);
+                        return;
+                    }
+                    this.myLastEmoteTime = now;
+
+                    const text = target.getAttribute('data-text');
+                    if (text && network) {
+                        network.sendAction('emote', { text: text }); // 快捷語音發送牌桌動作，不寫入聊天室對話紀錄
+                    }
+                    this.togglePanel(false);
+                }
+            });
+        }
+
+        // 關閉按鈕
+        const btnClose = document.getElementById('btn-close-chat');
+        if (btnClose) {
+            btnClose.addEventListener('click', () => this.togglePanel(false));
+        }
+
+        // 浮動開啟按鈕
+        if (UI.btnEmote) {
+            UI.btnEmote.addEventListener('click', () => {
+                const panel = document.getElementById('chat-panel');
+                const isOpen = panel && panel.style.display !== 'none';
+                this.togglePanel(!isOpen);
+                if (UI.taiRefPanel) UI.taiRefPanel.style.display = 'none';
+            });
+        }
+    },
+
+    togglePanel(open) {
+        const chatPanel = document.getElementById('chat-panel');
+        if (!chatPanel) return;
+        this.isPanelOpen = open;
+        chatPanel.style.display = open ? 'flex' : 'none';
+        if (open) {
+            this.unreadCount = 0;
+            this.updateBadge();
+            this.scrollToBottom('in-game-chat-messages');
+        }
+    },
+
+    updateBadge() {
+        const badge = document.getElementById('chat-unread-badge');
+        if (!badge) return;
+        if (this.unreadCount > 0) {
+            badge.innerText = this.unreadCount > 99 ? '99+' : this.unreadCount;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+    },
+
+    sendMessageFrom(inputEl) {
+        if (!inputEl) return;
+        const text = inputEl.value.trim();
+        if (!text) return;
+        if (!network) return;
+
+        network.sendChatMessage(text);
+        inputEl.value = '';
+    },
+
+    addMessage(msgData) {
+        this.messages.push(msgData);
+
+        const escapeHtml = (str) => {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        };
+
+        const isSelf = network && (
+            (network.myPlayerIndex >= 0 && msgData.playerIndex === network.myPlayerIndex) ||
+            (network.playerName && msgData.sender === network.playerName)
+        );
+
+        const msgHtml = `
+            <div class="chat-msg-item ${isSelf ? 'self' : 'other'}">
+                <div class="chat-msg-meta">
+                    <span class="chat-msg-sender">${escapeHtml(msgData.sender || '玩家')}</span>
+                    <span class="chat-msg-time">${escapeHtml(msgData.time || '')}</span>
+                </div>
+                <div class="chat-msg-bubble">${escapeHtml(msgData.text)}</div>
+            </div>
+        `;
+
+        // 渲染至等待室
+        const waitingBox = document.getElementById('waiting-chat-messages');
+        if (waitingBox) {
+            waitingBox.insertAdjacentHTML('beforeend', msgHtml);
+            this.scrollToBottom('waiting-chat-messages');
+        }
+
+        // 渲染至遊戲內聊天
+        const gameBox = document.getElementById('in-game-chat-messages');
+        if (gameBox) {
+            gameBox.insertAdjacentHTML('beforeend', msgHtml);
+            this.scrollToBottom('in-game-chat-messages');
+        }
+
+        // 增加未讀計數（若面板未開啟）
+        if (!this.isPanelOpen) {
+            this.unreadCount++;
+            this.updateBadge();
+        }
+    },
+
+    scrollToBottom(elementId) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            setTimeout(() => {
+                el.scrollTop = el.scrollHeight;
+            }, 50);
+        }
+    },
+
+    reset() {
+        this.messages = [];
+        this.unreadCount = 0;
+        this.updateBadge();
+        const waitingBox = document.getElementById('waiting-chat-messages');
+        if (waitingBox) waitingBox.innerHTML = '<div class="chat-system-msg">歡迎加入房間！可以在此打字溝通</div>';
+        const gameBox = document.getElementById('in-game-chat-messages');
+        if (gameBox) gameBox.innerHTML = '<div class="chat-system-msg">歡迎來到牌局！</div>';
+    }
+};
+
 // --- Socket / Room Logic ---
 
 if (UI.btnTaiRef) {
     UI.btnTaiRef.addEventListener('click', () => {
         UI.taiRefPanel.style.display = UI.taiRefPanel.style.display === 'none' ? 'block' : 'none';
-        if (UI.emotePanel) UI.emotePanel.style.display = 'none'; // 互斥開啟
+        const chatPanel = document.getElementById('chat-panel');
+        if (chatPanel) chatPanel.style.display = 'none'; // 互斥開啟
     });
 }
-let myLastEmoteTime = 0;
 
-if (UI.btnEmote) {
-    UI.btnEmote.addEventListener('click', () => {
-        UI.emotePanel.style.display = UI.emotePanel.style.display === 'none' ? 'grid' : 'none';
-        if (UI.taiRefPanel) UI.taiRefPanel.style.display = 'none';
-    });
-}
-if (UI.emotePanel) {
-    UI.emotePanel.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON') {
-            if (e.target.id === 'btn-emote-next') {
-                document.getElementById('emote-page-1').style.display = 'none';
-                document.getElementById('emote-page-2').style.display = 'flex';
-                return;
-            }
-            if (e.target.id === 'btn-emote-prev') {
-                document.getElementById('emote-page-1').style.display = 'flex';
-                document.getElementById('emote-page-2').style.display = 'none';
-                return;
-            }
-
-            const now = Date.now();
-            if (now - myLastEmoteTime < 5000) {
-                const timeLeft = Math.ceil((5000 - (now - myLastEmoteTime)) / 1000);
-                if (window.showNotification) window.showNotification(`太快了！請等 ${timeLeft} 秒`, true);
-                return;
-            }
-            myLastEmoteTime = now;
-            
-            const text = e.target.getAttribute('data-text');
-            network.sendAction('emote', { text: text });
-            UI.emotePanel.style.display = 'none';
-            // 關閉時重置回第一頁
-            const page1 = document.getElementById('emote-page-1');
-            const page2 = document.getElementById('emote-page-2');
-            if(page1) page1.style.display = 'flex';
-            if(page2) page2.style.display = 'none';
-        }
-    });
-}
 if (UI.btnCloseTai) {
     UI.btnCloseTai.addEventListener('click', () => {
         UI.taiRefPanel.style.display = 'none';
     });
 }
 
-window.showEmote = function(playerIndex, text) {
+window.showEmote = function(playerIndex, text, isEmote = false) {
     if (!network) {
-        if (window.showNotification) window.showNotification("DEBUG: NO NETWORK");
+        return;
+    }
+    
+    // 如果不在牌局遊戲畫面中（例如在等待室或大廳），牌桌氣泡與語音絕對不觸發，避免出現在畫面左上角
+    const gameScreen = document.getElementById('game-screen');
+    if (!gameScreen || gameScreen.classList.contains('hidden') || gameScreen.style.display === 'none') {
         return;
     }
     
@@ -218,13 +394,16 @@ window.showEmote = function(playerIndex, text) {
     
     const infoId = `info-${position}`;
     const infoEl = document.getElementById(infoId);
+    if (!infoEl) return;
+    
+    const rect = infoEl.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
     
     // Create speech bubble
     const bubble = document.createElement('div');
     bubble.className = 'emote-bubble';
     bubble.innerText = text;
     bubble.style.zIndex = '99999'; // FORCE ON TOP OF EVERYTHING
-    bubble.style.border = '2px solid red'; // DEBUG BORDER
     
     // Append to document.body to avoid ALL container issues
     document.body.appendChild(bubble);
@@ -232,49 +411,38 @@ window.showEmote = function(playerIndex, text) {
     // Force reflow
     void bubble.offsetWidth;
     
-    if (infoEl) {
-        // Use fixed positioning based on the bounding rect of infoEl
-        const rect = infoEl.getBoundingClientRect();
-        bubble.style.position = 'fixed';
-        
-        let topPos = rect.top - bubble.offsetHeight - 10;
-        
-        // If it goes off the top of the screen (top player), place it BELOW the player info
-        if (topPos < 10) {
-            topPos = rect.bottom + 10;
-            bubble.style.setProperty('--tail-top', '-6px');
-            bubble.style.setProperty('--tail-border', 'transparent transparent rgba(255, 255, 255, 0.95) transparent');
-        }
-        
-        bubble.style.top = topPos + 'px';
-        
-        if (position === 'left') {
-            bubble.style.left = rect.left + 'px';
-            bubble.style.transform = 'translateY(10px)';
-        } else if (position === 'right') {
-            bubble.style.left = 'auto';
-            bubble.style.right = (window.innerWidth - rect.right) + 'px';
-            bubble.style.transform = 'translateY(10px)';
-        } else {
-            bubble.style.left = (rect.left + rect.width / 2) + 'px';
-        }
+    // Use fixed positioning based on the bounding rect of infoEl
+    bubble.style.position = 'fixed';
+    
+    let topPos = rect.top - bubble.offsetHeight - 10;
+    
+    // If it goes off the top of the screen (top player), place it BELOW the player info
+    if (topPos < 10) {
+        topPos = rect.bottom + 10;
+        bubble.style.setProperty('--tail-top', '-6px');
+        bubble.style.setProperty('--tail-border', 'transparent transparent rgba(255, 255, 255, 0.95) transparent');
+    }
+    
+    bubble.style.top = topPos + 'px';
+    
+    if (position === 'left') {
+        bubble.style.left = rect.left + 'px';
+        bubble.style.transform = 'translateY(10px)';
+    } else if (position === 'right') {
+        bubble.style.left = 'auto';
+        bubble.style.right = (window.innerWidth - rect.right) + 'px';
+        bubble.style.transform = 'translateY(10px)';
     } else {
-        // Ultimate fallback
-        bubble.style.position = 'fixed';
-        bubble.style.top = '50%';
-        bubble.style.left = '50%';
-        bubble.style.transform = 'translate(-50%, -50%)';
+        bubble.style.left = (rect.left + rect.width / 2) + 'px';
     }
     
     bubble.classList.add('show');
-    if (infoEl && (position === 'left' || position === 'right')) {
+    if (position === 'left' || position === 'right') {
         bubble.style.transform = 'translateY(0)'; // override show transform
-    } else if (!infoEl) {
-        bubble.style.transform = 'translate(-50%, -50%) scale(1.2)';
     }
     
-    // Play TTS or custom Voice if sound is not muted
-    if (typeof isMuted !== 'undefined' && !isMuted) {
+    // 只有在點選「快捷語音」按鈕時才播放專屬音效或 TTS 語音朗讀 (一般聊天室打字不會發出任何聲音)
+    if (isEmote && typeof isMuted !== 'undefined' && !isMuted) {
         if (text === '度！') {
             const audio = new Audio('du.mp3');
             audio.play().catch(e => console.error("Audio play failed:", e));
@@ -288,10 +456,11 @@ window.showEmote = function(playerIndex, text) {
             const audio = new Audio('Wei & Meng.mp3');
             audio.play().catch(e => console.error("Audio play failed:", e));
         } else if (window.speechSynthesis) {
-            window.speechSynthesis.cancel(); // Clear any previous unplayed voices to prevent overlap/spam
+            // 沒有專屬 mp3 音效的快捷語音（如「要吠來twitch陳景路吠」、「沒救 繼續沉淪」、「這把穩了」）使用 TTS 報讀
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'zh-TW';
-            utterance.rate = 1.1; // Slightly faster
+            utterance.rate = 1.1;
             window.speechSynthesis.speak(utterance);
         }
     }
@@ -400,10 +569,11 @@ UI.btnSinglePlayer.addEventListener('click', async () => {
     const name = UI.playerName.value.trim() || 'Host';
     try { localStorage.setItem('mj_playerName', name); } catch(e) {}
     UI.lobbyStatus.innerText = '正在建立單機遊戲...';
+    ChatManager.reset();
     
     const gameLength = document.getElementById('game-length-select-lobby').value;
     
-    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
+    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed(), (msg) => ChatManager.addMessage(msg));
     network.isLocalSinglePlayer = true;
     try {
         await network.createRoom(name, gameLength);
@@ -422,10 +592,11 @@ UI.btnCreate.addEventListener('click', async () => {
     UI.lobbyStatus.innerText = '正在建立房間...';
     UI.btnCreate.disabled = true;
     startLoadingProgress();
+    ChatManager.reset();
     
     const gameLength = document.getElementById('game-length-select-lobby').value;
     
-    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
+    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed(), (msg) => ChatManager.addMessage(msg));
     network.isLocalSinglePlayer = false;
     try {
         const roomId = await network.createRoom(name, gameLength);
@@ -456,8 +627,9 @@ UI.btnJoin.addEventListener('click', async () => {
     UI.lobbyStatus.innerText = '正在加入房間...';
     UI.btnJoin.disabled = true;
     startLoadingProgress();
+    ChatManager.reset();
 
-    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed());
+    network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed(), (msg) => ChatManager.addMessage(msg));
     network.isLocalSinglePlayer = false;
     try {
         await network.joinRoom(code, name);
@@ -473,7 +645,9 @@ UI.btnJoin.addEventListener('click', async () => {
         showScreen('waiting');
     } catch (err) {
         stopLoadingProgress(false);
-        UI.lobbyStatus.innerText = '加入房間失敗：' + err.message;
+        UI.lobbyStatus.style.color = '#ef4444';
+        UI.lobbyStatus.innerText = err.message;
+        if (window.showNotification) window.showNotification(err.message, true);
         UI.btnJoin.disabled = false;
     }
 });

@@ -1,7 +1,7 @@
 // --- 網路連線邏輯 (network.js) ---
 
 class MahjongNetwork {
-    constructor(onStateUpdate, onPlayerListUpdate, onGameStart, botSpeed = 5000) {
+    constructor(onStateUpdate, onPlayerListUpdate, onGameStart, botSpeed = 5000, onChatMessage = null) {
         this.peer = null;
         this.connections = []; // For Host
         this.hostConnection = null; // For Client
@@ -14,11 +14,75 @@ class MahjongNetwork {
         this.onStateUpdate = onStateUpdate;
         this.onPlayerListUpdate = onPlayerListUpdate;
         this.onGameStart = onGameStart;
+        this.onChatMessage = onChatMessage;
         this.botSpeed = botSpeed;
         this.gameLength = 'infinite';
         
         this.globalTimer = null;
         this.lastTurnEpoch = -1;
+    }
+
+    getPeerConfig() {
+        return {
+            host: 'shibajong.onrender.com',
+            port: 443,
+            secure: true,
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    {
+                        urls: 'turn:openrelay.metered.ca:80',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turns:openrelay.metered.ca:5349',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ],
+                'iceCandidatePoolSize': 10
+            }
+        };
+    }
+
+    formatPeerError(err) {
+        if (!err) return '連線失敗，請稍後再試';
+        const type = err.type || '';
+        const msg = err.message || String(err);
+        if (type === 'peer-unavailable' || msg.includes('Could not connect to peer')) {
+            return '找不到該房間（房間不存在、房主尚未開房或房間代碼輸入錯誤）';
+        }
+        if (type === 'invalid-id' || msg.includes('Invalid ID')) {
+            return '房間代碼格式不正確';
+        }
+        if (type === 'unavailable-id' || msg.includes('is taken')) {
+            return '該房間代碼已被佔用，請重新嘗試';
+        }
+        if (type === 'browser-incompatible') {
+            return '您的瀏覽器不支援 WebRTC 連線';
+        }
+        if (type === 'network' || type === 'server-error' || type === 'socket-error' || type === 'socket-closed') {
+            return '無法連接至連線伺服器，請檢查網路或稍後再試';
+        }
+        return msg;
     }
 
     createRoom(playerName, gameLength = 'infinite') {
@@ -37,88 +101,103 @@ class MahjongNetwork {
             const roomId = Math.floor(1000 + Math.random() * 9000).toString();
             const fullRoomId = 'shibajong_tw_' + roomId;
             
-            const peerConfig = {
-                host: 'shibajong.onrender.com',
-                port: 443,
-                secure: true,
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        {
-                            urls: 'turn:openrelay.metered.ca:80',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        }
-                    ]
-                }
-            };
-            
+            const peerConfig = this.getPeerConfig();
             this.peer = new Peer(fullRoomId, peerConfig);
 
-            this.peer.on('open', (id) => resolve(roomId));
+            this.peer.on('open', (id) => {
+                this.startHostHeartbeat();
+                resolve(roomId);
+            });
             this.peer.on('connection', (conn) => {
                 this.connections.push(conn);
                 this.setupHostConnectionEvents(conn);
             });
-            this.peer.on('error', (err) => reject(err));
+            this.peer.on('error', (err) => {
+                reject(new Error(this.formatPeerError(err)));
+            });
         });
     }
 
     joinRoom(roomId, playerName) {
         this.playerName = playerName;
         this.isHost = false;
+        this.myPlayerIndex = -1;
+        this.hasJoinedSuccessfully = false;
 
         return new Promise((resolve, reject) => {
-            const peerConfig = {
-                host: 'shibajong.onrender.com',
-                port: 443,
-                secure: true,
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                        {
-                            urls: 'turn:openrelay.metered.ca:80',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        },
-                        {
-                            urls: 'turn:openrelay.metered.ca:443',
-                            username: 'openrelayproject',
-                            credential: 'openrelayproject'
-                        }
-                    ]
-                }
+            let isResolved = false;
+            let joinTimeout = null;
+
+            const cleanupAndReject = (err) => {
+                if (isResolved) return;
+                isResolved = true;
+                this.hasJoinedSuccessfully = false;
+                if (joinTimeout) clearTimeout(joinTimeout);
+                try {
+                    if (this.hostConnection) this.hostConnection.close();
+                    if (this.peer) this.peer.destroy();
+                } catch(e) {}
+                const friendlyMsg = this.formatPeerError(err);
+                reject(new Error(friendlyMsg));
             };
-            
+
+            const cleanupAndResolve = (acceptedIndex) => {
+                if (isResolved) return;
+                isResolved = true;
+                this.hasJoinedSuccessfully = true;
+                if (joinTimeout) clearTimeout(joinTimeout);
+                resolve(acceptedIndex);
+            };
+
+            // 設置 25 秒超時保護，避免卡在 98%
+            joinTimeout = setTimeout(() => {
+                cleanupAndReject(new Error('連線超時（房主可能未開房或伺服器喚醒中，請再試一次）'));
+            }, 25000);
+
+            const peerConfig = this.getPeerConfig();
             this.peer = new Peer(peerConfig);
+
             this.peer.on('open', (id) => {
                 const fullRoomId = 'shibajong_tw_' + roomId;
-                this.hostConnection = this.peer.connect(fullRoomId);
+                this.hostConnection = this.peer.connect(fullRoomId, {
+                    reliable: true
+                });
+
                 this.hostConnection.on('open', () => {
                     this.hostConnection.send({ type: 'join', playerName: this.playerName });
-                    resolve();
                 });
+
+                this.hostConnection.on('error', (err) => {
+                    cleanupAndReject(err || new Error('與房主連線失敗'));
+                });
+
                 this.hostConnection.on('close', () => {
-                    if (!sessionStorage.getItem('disconnectMsg')) {
-                        sessionStorage.setItem('disconnectMsg', '房主已離開遊戲，連線中斷。');
+                    if (!this.hasJoinedSuccessfully) {
+                        cleanupAndReject(new Error('找不到該房間（房主可能已離開或代碼錯誤）'));
+                    } else {
+                        if (!sessionStorage.getItem('disconnectMsg')) {
+                            sessionStorage.setItem('disconnectMsg', '與房主連線已中斷。');
+                        }
+                        location.reload();
                     }
-                    location.reload();
                 });
-                this.setupClientConnectionEvents(this.hostConnection);
+
+                this.setupClientConnectionEvents(this.hostConnection, (acceptedIndex) => {
+                    cleanupAndResolve(acceptedIndex);
+                }, (errorMsg) => {
+                    cleanupAndReject(new Error(errorMsg));
+                });
             });
-            this.peer.on('error', (err) => reject(err));
+
+            this.peer.on('error', (err) => {
+                cleanupAndReject(err);
+            });
+
             this.peer.on('disconnected', () => {
-                sessionStorage.setItem('disconnectMsg', '已與伺服器斷線。');
-                location.reload();
+                if (this.hasJoinedSuccessfully) {
+                    sessionStorage.setItem('disconnectMsg', '已與伺服器斷線。');
+                    location.reload();
+                }
             });
         });
     }
@@ -155,9 +234,51 @@ class MahjongNetwork {
         this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
     }
 
+    startHostHeartbeat() {
+        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = setInterval(() => {
+            if (!this.isHost || !this.connections) return;
+            const now = Date.now();
+            this.connections.forEach(conn => {
+                if (conn.open) {
+                    try { conn.send({ type: 'ping' }); } catch(e) {}
+                    if (conn._lastPong && now - conn._lastPong > 20000) {
+                        if (conn._handleDisconnect) conn._handleDisconnect();
+                    }
+                }
+            });
+        }, 3000);
+    }
+
     setupHostConnectionEvents(conn) {
+        conn._lastPong = Date.now();
+        let isDisconnected = false;
+        const handleDisconnect = () => {
+            if (isDisconnected) return;
+            isDisconnected = true;
+            const playerIndex = this.game.players.findIndex(p => p.id === conn.peer);
+            if (playerIndex !== -1) {
+                const playerName = this.game.players[playerIndex].name;
+                if (window.showNotification) window.showNotification(`${playerName} 已離開房間`, true);
+                this.removePlayer(playerIndex);
+            }
+            this.connections = this.connections.filter(c => c.peer !== conn.peer);
+        };
+        conn._handleDisconnect = handleDisconnect;
+
+        conn.on('close', handleDisconnect);
+        conn.on('error', handleDisconnect);
+
         conn.on('data', (data) => {
-            if (data.type === 'join') {
+            conn._lastPong = Date.now();
+            if (data.type === 'pong') {
+                return;
+            }
+            else if (data.type === 'leave') {
+                handleDisconnect();
+                return;
+            }
+            else if (data.type === 'join') {
                 try {
                     let targetIndex = -1;
                     
@@ -221,6 +342,10 @@ class MahjongNetwork {
             else if (data.type === 'action') {
                 this.handlePlayerAction(data.action, data.payload, data.playerIndex);
             }
+            else if (data.type === 'chat_message') {
+                this.broadcast(data);
+                if (this.onChatMessage) this.onChatMessage(data);
+            }
             else if (data.type === 'ready') {
                 const player = this.game.players.find(p => p.id === conn.peer);
                 if (player) {
@@ -230,32 +355,57 @@ class MahjongNetwork {
                 }
             }
         });
-        
-        conn.on('close', () => {
-            const playerIndex = this.game.players.findIndex(p => p.id === conn.peer);
-            if (playerIndex !== -1) {
-                const playerName = this.game.players[playerIndex].name;
-                if (window.showNotification) window.showNotification(`${playerName} 已離開房間`, true);
-                this.removePlayer(playerIndex);
-            }
-        });
     }
 
-    setupClientConnectionEvents(conn) {
+    setupClientConnectionEvents(conn, onJoined, onError) {
+        if (typeof window !== 'undefined' && !this._unloadBound) {
+            this._unloadBound = true;
+
+            // 當切換回分頁或從桌面返回時，立即發送心跳恢復連線活躍度
+            const handleResume = () => {
+                if (this.hostConnection && this.hostConnection.open) {
+                    try {
+                        this.hostConnection.send({ type: 'pong' });
+                    } catch (e) {}
+                }
+            };
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') handleResume();
+            });
+            window.addEventListener('pageshow', handleResume);
+            window.addEventListener('focus', handleResume);
+        }
+
         conn.on('data', (data) => {
-            if (data.type === 'assign_index') this.myPlayerIndex = data.index;
+            if (data.type === 'ping') {
+                if (conn.open) {
+                    try { conn.send({ type: 'pong' }); } catch(e) {}
+                }
+                return;
+            }
+            else if (data.type === 'assign_index') {
+                this.myPlayerIndex = data.index;
+                if (onJoined) onJoined(data.index);
+            }
             else if (data.type === 'update_players') this.onPlayerListUpdate(data.players, data.settings);
             else if (data.type === 'game_start') this.onGameStart();
             else if (data.type === 'state_update') this.onStateUpdate(data.state, this.myPlayerIndex);
             else if (data.type === 'game_state') {
                 this.onStateUpdate(data.state, this.myPlayerIndex);
             }
+            else if (data.type === 'chat_message') {
+                if (this.onChatMessage) this.onChatMessage(data);
+            }
             else if (data.type === 'emote_event') {
-                if (window.showEmote) window.showEmote(data.playerIndex, data.text);
+                if (window.showEmote) window.showEmote(data.playerIndex, data.text, true);
             }
             else if (data.type === 'error') {
+                if (onError) {
+                    onError(data.message);
+                } else {
+                    if (window.showNotification) window.showNotification(data.message, true);
+                }
                 sessionStorage.setItem('disconnectMsg', data.message);
-                if (window.showNotification) window.showNotification(data.message, true);
                 setTimeout(() => {
                     conn.close();
                 }, 300);
@@ -352,20 +502,52 @@ class MahjongNetwork {
             this.broadcastGameState();
         } else if (action === 'emote') {
             this.broadcast({ type: 'emote_event', playerIndex: playerIndex, text: payload.text });
-            if (window.showEmote) window.showEmote(playerIndex, payload.text);
+            if (window.showEmote) window.showEmote(playerIndex, payload.text, true);
         }
     }
 
     sendAction(action, payload) {
-        if (this.isHost) {
+        if (this.isLocalSinglePlayer) {
+            if (action === 'emote') {
+                if (window.showEmote) window.showEmote(this.myPlayerIndex >= 0 ? this.myPlayerIndex : 0, payload.text, true);
+            } else {
+                this.handlePlayerAction(action, payload, this.myPlayerIndex);
+            }
+        } else if (this.isHost) {
             this.handlePlayerAction(action, payload, this.myPlayerIndex);
         } else {
-            this.hostConnection.send({
-                type: 'action',
-                action: action,
-                payload: payload,
-                playerIndex: this.myPlayerIndex
-            });
+            if (this.hostConnection && this.hostConnection.open) {
+                this.hostConnection.send({
+                    type: 'action',
+                    action: action,
+                    payload: payload,
+                    playerIndex: this.myPlayerIndex
+                });
+            }
+        }
+    }
+
+    sendChatMessage(text) {
+        if (!text || !text.trim()) return;
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const chatData = {
+            type: 'chat_message',
+            sender: this.playerName || (this.isHost ? '房主' : '玩家'),
+            playerIndex: this.myPlayerIndex >= 0 ? this.myPlayerIndex : (this.isHost ? 0 : -1),
+            text: text.trim(),
+            time: timeStr
+        };
+
+        if (this.isLocalSinglePlayer) {
+            if (this.onChatMessage) this.onChatMessage(chatData);
+        } else if (this.isHost) {
+            this.broadcast(chatData);
+            if (this.onChatMessage) this.onChatMessage(chatData);
+        } else {
+            if (this.hostConnection && this.hostConnection.open) {
+                this.hostConnection.send(chatData);
+            }
         }
     }
 

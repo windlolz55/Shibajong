@@ -618,8 +618,322 @@ button.primary:hover {
     /* Place UI elements just above the bottom hand */
     #btn-tai-ref { bottom: 170px !important; }
     #btn-emote { bottom: 220px !important; }
-    #emote-panel { bottom: 270px !important; }
+    #chat-panel, #emote-panel { bottom: 270px !important; }
     .tenpai-hint { bottom: 170px !important; right: 10px !important; }
+}
+
+/* === Chat Room & Unread Badge Styles === */
+.chat-unread-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 18px;
+    height: 18px;
+    line-height: 18px;
+    border-radius: 9px;
+    text-align: center;
+    padding: 0 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    pointer-events: none;
+}
+
+.waiting-chat-container {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 15px;
+    text-align: left;
+}
+
+.chat-header {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #38bdf8;
+    margin-bottom: 8px;
+}
+
+.chat-messages-box {
+    height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    scroll-behavior: smooth;
+}
+
+.game-chat-box {
+    height: 220px;
+}
+
+.chat-messages-box::-webkit-scrollbar {
+    width: 5px;
+}
+
+.chat-messages-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+}
+
+.chat-msg-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 90%;
+    word-break: break-word;
+}
+
+.chat-msg-item.self {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.chat-msg-item.other {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.chat-msg-meta {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.chat-msg-bubble {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+
+.chat-msg-item.self .chat-msg-bubble {
+    background: #0284c7;
+    color: #fff;
+    border-bottom-right-radius: 2px;
+}
+
+.chat-msg-item.other .chat-msg-bubble {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f1f5f9;
+    border-bottom-left-radius: 2px;
+}
+
+.chat-system-msg {
+    align-self: center;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-style: italic;
+    margin: 3px 0;
+}
+
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: stretch;
+    width: 100%;
+}
+
+.chat-input-row input,
+input#waiting-chat-input,
+input#in-game-chat-input {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    caret-color: #38bdf8 !important;
+    padding: 0 14px !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    border-radius: 8px !important;
+    font-size: 16px !important; /* 避免 iOS Safari 自動放大，並保證字體清晰 */
+    outline: none !important;
+    box-sizing: border-box !important;
+    opacity: 1 !important;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chat-input-row input:focus,
+input#waiting-chat-input:focus,
+input#in-game-chat-input:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
+}
+
+.btn-chat-send {
+    height: 44px !important;
+    min-height: 44px !important;
+    width: auto !important;
+    background: #38bdf8 !important;
+    color: #0f172a !important;
+    border: none !important;
+    padding: 0 16px !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    cursor: pointer;
+    font-size: 15px !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    transition: background 0.2s, transform 0.1s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-chat-send:active {
+    transform: scale(0.96);
+}
+
+/* 遊戲內聊天面板 */
+.in-game-chat-panel {
+    position: absolute;
+    bottom: calc(40px + clamp(60px, 16vw, 80px));
+    left: 16px;
+    width: 360px;
+    max-width: calc(100vw - 28px);
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid #38bdf8;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    z-index: 250;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+
+.chat-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.chat-tabs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.chat-tab-btn {
+    width: auto !important;
+    background: transparent;
+    border: none !important;
+    color: #94a3b8;
+    padding: 6px 12px !important;
+    font-size: 0.9rem !important;
+    font-weight: bold;
+    border-radius: 6px !important;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 0 !important;
+}
+
+.chat-tab-btn.active {
+    background: rgba(56, 189, 248, 0.2) !important;
+    color: #38bdf8 !important;
+}
+
+.chat-close-btn,
+button#btn-close-chat,
+#btn-close-chat {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 !important;
+    margin: 0 0 0 auto !important; /* 確保絕對貼齊最右側 */
+    background: rgba(255, 255, 255, 0.12) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 8px !important;
+    color: #94a3b8 !important;
+    font-size: 1.1rem !important;
+    cursor: pointer;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s;
+    flex: 0 0 32px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    line-height: 1 !important;
+}
+
+.chat-close-btn:hover,
+button#btn-close-chat:hover,
+#btn-close-chat:hover {
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.chat-tab-pane {
+    padding: 12px;
+}
+
+.btn-emote-option {
+    background: rgba(255, 255, 255, 0.1);
+    border: none !important;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.92rem;
+    width: 100%;
+    margin: 0 !important;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.btn-emote-option:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-emote-option:active {
+    transform: scale(0.98);
+}
+
+.btn-emote-nav {
+    background: rgba(56, 189, 248, 0.2);
+    border: none !important;
+    color: #38bdf8;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-top: 4px;
+    width: 100%;
+    transition: background 0.2s;
+}
+
+.btn-emote-nav:hover {
+    background: rgba(56, 189, 248, 0.35);
 }
 
 /* === Emote Bubble === */
@@ -655,4 +969,5 @@ button.primary:hover {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+
 

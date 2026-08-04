@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>喜八路麻</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2.74">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.59<br>made by Kittenz
+                        當前版本：v2.67<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -93,6 +93,18 @@
                     <h3 style="margin-top: 0; margin-bottom: 10px; color: #cbd5e1; font-size: 1.1rem;">房間設定</h3>
                     <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">出牌時間：<span id="display-room-speed" style="color: #fff; font-weight: bold;"></span></p>
                     <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">遊戲長度：<span id="display-room-length" style="color: #fff; font-weight: bold;"></span></p>
+                </div>
+
+                <!-- 等待室聊天室 -->
+                <div id="waiting-chat-container" class="waiting-chat-container">
+                    <div class="chat-header">💬 房間聊天</div>
+                    <div id="waiting-chat-messages" class="chat-messages-box">
+                        <div class="chat-system-msg">歡迎加入房間！可以在此打字溝通</div>
+                    </div>
+                    <div class="chat-input-row">
+                        <input type="text" id="waiting-chat-input" placeholder="輸入訊息..." maxlength="60" autocomplete="off">
+                        <button type="button" id="btn-waiting-chat-send" class="btn-chat-send">送出</button>
+                    </div>
                 </div>
 
                 <p id="waiting-status" style="color: #94a3b8;"></p>
@@ -232,22 +244,48 @@
             <!-- 台數表 UI -->
             <button class="circle-btn" id="btn-tai-ref" style="bottom: 20px; left: 20px; color: #facc15; border-color: #facc15;">📜</button>
             
-            <!-- 表情/文字輪盤 UI -->
-            <button class="circle-btn" id="btn-emote" style="bottom: calc(30px + clamp(30px, 8vw, 40px)); left: 20px; color: #38bdf8; border-color: #38bdf8;">💬</button>
+            <!-- 表情與聊天按鈕 UI -->
+            <button class="circle-btn" id="btn-emote" style="bottom: calc(30px + clamp(30px, 8vw, 40px)); left: 20px; color: #38bdf8; border-color: #38bdf8; position: absolute;">
+                💬
+                <span id="chat-unread-badge" class="chat-unread-badge" style="display: none;">0</span>
+            </button>
             
-            <div id="emote-panel" style="position: absolute; bottom: calc(40px + clamp(60px, 16vw, 80px)); left: 20px; background: rgba(15,23,42,0.95); border: 1px solid #38bdf8; padding: 10px; border-radius: 12px; display: none; flex-direction: column; gap: 8px; z-index: 200; box-shadow: 0 4px 15px rgba(0,0,0,0.8); width: 200px;">
-                <div id="emote-page-1" style="display: flex; flex-direction: column; gap: 8px;">
-                    <button class="btn-emote-option" data-text="要吠來twitch陳景路吠" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">要吠來twitch陳景路吠</button>
-                    <button class="btn-emote-option" data-text="沒救 繼續沉淪" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">沒救 繼續沉淪</button>
-                    <button class="btn-emote-option" data-text="這把穩了" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">這把穩了</button>
-                    <button class="btn-emote-option" data-text="度！" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">度！</button>
-                    <button id="btn-emote-next" style="background: rgba(56,189,248,0.2); border: none; color: #38bdf8; padding: 8px; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.9rem; font-weight: bold; margin-top: 4px; transition: background 0.2s;">下一頁 ➡</button>
+            <!-- 遊戲內即時聊天與快捷罐頭面板 -->
+            <div id="chat-panel" class="in-game-chat-panel" style="display: none;">
+                <div class="chat-panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+                    <div class="chat-tabs" style="display: flex; gap: 8px; align-items: center;">
+                        <button type="button" id="tab-btn-chat" class="chat-tab-btn active">💬 聊天</button>
+                        <button type="button" id="tab-btn-quick" class="chat-tab-btn">⚡ 快捷語音</button>
+                    </div>
+                    <button type="button" id="btn-close-chat" class="chat-close-btn" style="width: 32px; min-width: 32px; max-width: 32px; height: 32px; min-height: 32px; max-height: 32px; padding: 0; margin-left: auto; flex: 0 0 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1;">✖</button>
                 </div>
-                <div id="emote-page-2" style="display: none; flex-direction: column; gap: 8px;">
-                    <button class="btn-emote-option" data-text="dllm" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">dllm</button>
-                    <button class="btn-emote-option" data-text="陽光彩虹小白馬" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">陽光彩虹小白馬</button>
-                    <button class="btn-emote-option" data-text="葳葳孟孟" style="background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 0.9rem; transition: background 0.2s;">葳葳孟孟</button>
-                    <button id="btn-emote-prev" style="background: rgba(56,189,248,0.2); border: none; color: #38bdf8; padding: 8px; border-radius: 6px; cursor: pointer; text-align: center; font-size: 0.9rem; font-weight: bold; margin-top: 4px; transition: background 0.2s;">⬅ 上一頁</button>
+                
+                <!-- 聊天文字分頁 -->
+                <div id="chat-tab-content" class="chat-tab-pane">
+                    <div id="in-game-chat-messages" class="chat-messages-box game-chat-box">
+                        <div class="chat-system-msg">歡迎來到牌局！</div>
+                    </div>
+                    <div class="chat-input-row">
+                        <input type="text" id="in-game-chat-input" placeholder="輸入訊息..." maxlength="60" autocomplete="off">
+                        <button type="button" id="btn-in-game-chat-send" class="btn-chat-send">送出</button>
+                    </div>
+                </div>
+
+                <!-- 快捷罐頭分頁 -->
+                <div id="quick-tab-content" class="chat-tab-pane" style="display: none;">
+                    <div id="emote-page-1" style="display: flex; flex-direction: column; gap: 8px;">
+                        <button class="btn-emote-option" data-text="要吠來twitch陳景路吠">要吠來twitch陳景路吠</button>
+                        <button class="btn-emote-option" data-text="沒救 繼續沉淪">沒救 繼續沉淪</button>
+                        <button class="btn-emote-option" data-text="這把穩了">這把穩了</button>
+                        <button class="btn-emote-option" data-text="度！">度！</button>
+                        <button id="btn-emote-next" class="btn-emote-nav">下一頁 ➡</button>
+                    </div>
+                    <div id="emote-page-2" style="display: none; flex-direction: column; gap: 8px;">
+                        <button class="btn-emote-option" data-text="dllm">dllm</button>
+                        <button class="btn-emote-option" data-text="陽光彩虹小白馬">陽光彩虹小白馬</button>
+                        <button class="btn-emote-option" data-text="葳葳孟孟">葳葳孟孟</button>
+                        <button id="btn-emote-prev" class="btn-emote-nav">⬅ 上一頁</button>
+                    </div>
                 </div>
             </div>
             
@@ -336,8 +374,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.59"></script>
-    <script src="network.js?v=2.59"></script>
-    <script src="app.js?v=2.59"></script>
+    <script src="game.js?v=2.74"></script>
+    <script src="network.js?v=2.74"></script>
+    <script src="app.js?v=2.74"></script>
 </body>
 </html>
