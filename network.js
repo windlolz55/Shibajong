@@ -64,11 +64,6 @@ class MahjongNetwork {
 
             this.peer.on('open', (id) => resolve(roomId));
             this.peer.on('connection', (conn) => {
-                if (this.game.players.length >= 4) {
-                    conn.send({ type: 'error', message: '房間已滿' });
-                    setTimeout(() => conn.close(), 500);
-                    return;
-                }
                 this.connections.push(conn);
                 this.setupHostConnectionEvents(conn);
             });
@@ -209,14 +204,18 @@ class MahjongNetwork {
                         if (window.showNotification) window.showNotification(`${data.playerName} 加入房間`);
                     } else {
                         // 房間已滿或遊戲已開始，拒絕加入
+                        let reason = '房間人數已滿（已達 4 人上限）';
+                        if (this.game.gameState !== 'INIT') {
+                            reason = '遊戲已經開始，無法中途加入';
+                        }
                         const names = this.game.players.map(p => p.name).join(', ');
-                        conn.send({ type: 'error', message: `找不到符合的斷線玩家名稱 [${data.playerName}]。目前房內玩家：${names}` });
-                        setTimeout(() => conn.close(), 2000);
+                        conn.send({ type: 'error', message: `${reason}！目前房內玩家：${names}` });
+                        setTimeout(() => conn.close(), 1000);
                     }
                 } catch (e) {
                     console.error(e);
                     conn.send({ type: 'error', message: '房主發生內部錯誤：' + e.message });
-                    setTimeout(() => conn.close(), 2000);
+                    setTimeout(() => conn.close(), 1000);
                 }
             } 
             else if (data.type === 'action') {
@@ -255,8 +254,11 @@ class MahjongNetwork {
                 if (window.showEmote) window.showEmote(data.playerIndex, data.text);
             }
             else if (data.type === 'error') {
-                sessionStorage.setItem('disconnectMsg', '加入失敗：' + data.message);
-                conn.close(); // 主動關閉
+                sessionStorage.setItem('disconnectMsg', data.message);
+                if (window.showNotification) window.showNotification(data.message, true);
+                setTimeout(() => {
+                    conn.close();
+                }, 300);
             }
         });
     }

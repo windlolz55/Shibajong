@@ -1414,11 +1414,15 @@ function showChowOptions(options) {
     UI.chowOptionsContainer.appendChild(cancelBtn);
 }
 
-// �ˬd�O�_���_�u�T��
+// 檢查是否有斷線/錯誤訊息
 const disconnectMsg = sessionStorage.getItem('disconnectMsg');
 if (disconnectMsg) {
     sessionStorage.removeItem('disconnectMsg');
     if (window.showNotification) showNotification(disconnectMsg, true);
+    if (UI.lobbyStatus) {
+        UI.lobbyStatus.style.color = '#ef4444';
+        UI.lobbyStatus.innerText = disconnectMsg;
+    }
 }
 // --- Global Tooltip Boundary Fix ---
 document.addEventListener('mouseover', function(e) {
