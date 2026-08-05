@@ -112,6 +112,14 @@ class MahjongNetwork {
                 this.connections.push(conn);
                 this.setupHostConnectionEvents(conn);
             });
+            this.peer.on('disconnected', () => {
+                console.warn('房主與信號伺服器連線中斷，正在嘗試自動重新連接信號伺服器...');
+                try {
+                    if (this.peer && !this.peer.destroyed) {
+                        this.peer.reconnect();
+                    }
+                } catch (e) {}
+            });
             this.peer.on('error', (err) => {
                 reject(new Error(this.formatPeerError(err)));
             });
@@ -194,10 +202,13 @@ class MahjongNetwork {
             });
 
             this.peer.on('disconnected', () => {
-                if (this.hasJoinedSuccessfully) {
-                    sessionStorage.setItem('disconnectMsg', '已與伺服器斷線。');
-                    location.reload();
-                }
+                // 信號伺服器（WebSocket）短暫斷開不影響與房主的 WebRTC P2P 對局，在背景自動重連信號伺服器即可
+                console.warn('客戶端與信號伺服器連線中斷，正在背景嘗試自動重連...');
+                try {
+                    if (this.peer && !this.peer.destroyed) {
+                        this.peer.reconnect();
+                    }
+                } catch (e) {}
             });
         });
     }
@@ -237,16 +248,27 @@ class MahjongNetwork {
     startHostHeartbeat() {
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
         this.heartbeatInterval = setInterval(() => {
-            if (!this.isHost || !this.connections) return;
+            if (!this.isHost) return;
+
+            // 1. 維護房主在信號伺服器（shibajong.onrender.com）上的註冊，防止中途斷線讓其他玩家找不到房間
+            if (this.peer && this.peer.disconnected && !this.peer.destroyed) {
+                try {
+                    this.peer.reconnect();
+                } catch (e) {}
+            }
+
+            // 2. 向所有客戶端發送 P2P 心跳包維護 WebRTC DataChannel
             const now = Date.now();
-            this.connections.forEach(conn => {
-                if (conn.open) {
-                    try { conn.send({ type: 'ping' }); } catch(e) {}
-                    if (conn._lastPong && now - conn._lastPong > 20000) {
-                        if (conn._handleDisconnect) conn._handleDisconnect();
+            if (this.connections) {
+                this.connections.forEach(conn => {
+                    if (conn.open) {
+                        try { conn.send({ type: 'ping' }); } catch(e) {}
+                        if (conn._lastPong && now - conn._lastPong > 25000) {
+                            if (conn._handleDisconnect) conn._handleDisconnect();
+                        }
                     }
-                }
-            });
+                });
+            }
         }, 3000);
     }
 
