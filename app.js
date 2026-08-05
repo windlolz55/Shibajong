@@ -131,6 +131,10 @@ window.addEventListener('DOMContentLoaded', () => {
         if (savedName && UI.playerName) {
             UI.playerName.value = savedName;
         }
+        if (localStorage.getItem('mj_admin_auth') === 'true') {
+            window.isAdmin = true;
+            if (UI.adminStatus) UI.adminStatus.style.display = 'block';
+        }
     } catch (e) {
         console.warn("localStorage not available:", e);
     }
@@ -157,6 +161,11 @@ let previousVolume = 1.0;
 let isMuted = false;
 let currentTimerInterval = null;
 window.isAdmin = false;
+try {
+    if (localStorage.getItem('mj_admin_auth') === 'true') {
+        window.isAdmin = true;
+    }
+} catch (e) {}
 
 // 從 localStorage 讀取儲存的音量偏好
 try {
@@ -554,11 +563,22 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
 
 if (UI.btnAdminLogin) {
     UI.btnAdminLogin.addEventListener('click', () => {
+        if (window.isAdmin) {
+            if (confirm('您目前已登入管理員模式。\n要登出管理員身份嗎？')) {
+                window.isAdmin = false;
+                try { localStorage.removeItem('mj_admin_auth'); } catch (e) {}
+                if (UI.adminStatus) UI.adminStatus.style.display = 'none';
+                if (UI.adminPanel) UI.adminPanel.style.display = 'none';
+                alert('已登出管理員模式');
+            }
+            return;
+        }
         const pw = prompt('請輸入管理員密碼：');
         if (pw === 'kittenz') {
             window.isAdmin = true;
+            try { localStorage.setItem('mj_admin_auth', 'true'); } catch (e) {}
             if (UI.adminStatus) UI.adminStatus.style.display = 'block';
-            alert('管理員模式已啟用，您建立或加入房間即可使用強制胡牌、變牌等功能。');
+            alert('管理員模式已啟用，已為您自動儲存登入狀態！');
             if (network && UI.adminPanel) {
                 UI.adminPanel.style.display = 'flex';
             }
