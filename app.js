@@ -547,6 +547,156 @@ function playDiscardSound() {
     osc.stop(audioCtx.currentTime + 0.05);
 }
 
+function playWinSound(isSelfDraw) {
+    if (isMuted) return;
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+
+        // 1. 低音震波 (Impact Bass)
+        const subOsc = audioCtx.createOscillator();
+        const subGain = audioCtx.createGain();
+        subOsc.type = 'sine';
+        subOsc.frequency.setValueAtTime(160, now);
+        subOsc.frequency.exponentialRampToValueAtTime(30, now + 0.65);
+        subGain.gain.setValueAtTime(1.0, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        subOsc.connect(subGain);
+        subGain.connect(audioCtx.destination);
+        subOsc.start(now);
+        subOsc.stop(now + 0.65);
+
+        // 2. 宏亮勝利和弦 (Triumphant Fanfare)
+        const freqs = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+        freqs.forEach((freq, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
+            const noteStart = now + (idx * 0.035);
+            osc.frequency.setValueAtTime(freq, noteStart);
+            
+            gain.gain.setValueAtTime(0.25, noteStart);
+            gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 1.2);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(noteStart);
+            osc.stop(noteStart + 1.2);
+        });
+
+        // 3. 高頻閃耀華麗琶音 (Sparkling Arpeggio)
+        const sparkle = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+        sparkle.forEach((freq, i) => {
+            const sOsc = audioCtx.createOscillator();
+            const sGain = audioCtx.createGain();
+            sOsc.type = 'sine';
+            const sStart = now + 0.22 + (i * 0.05);
+            sOsc.frequency.setValueAtTime(freq, sStart);
+            sGain.gain.setValueAtTime(0.18, sStart);
+            sGain.gain.exponentialRampToValueAtTime(0.001, sStart + 0.45);
+            sOsc.connect(sGain);
+            sGain.connect(audioCtx.destination);
+            sOsc.start(sStart);
+            sOsc.stop(sStart + 0.45);
+        });
+    } catch(e) {
+        console.error("playWinSound error:", e);
+    }
+}
+
+function playDrawSound() {
+    if (isMuted) return;
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.45);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+    } catch(e) {
+        console.error("playDrawSound error:", e);
+    }
+}
+
+function hideWinCelebration() {
+    const overlay = document.getElementById('win-celebration-overlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+    document.querySelectorAll('.player-area').forEach(el => el.classList.remove('winner-highlight'));
+}
+
+function triggerWinCelebration(state, myIndex) {
+    const s = state.settlementData;
+    if (!s) return;
+
+    const overlay = document.getElementById('win-celebration-overlay');
+    const badgeEl = document.getElementById('win-celebration-badge');
+    const infoEl = document.getElementById('win-celebration-info');
+
+    // 移除舊的贏家高亮
+    document.querySelectorAll('.player-area').forEach(el => el.classList.remove('winner-highlight'));
+
+    if (s.isDraw) {
+        if (badgeEl) badgeEl.innerText = '流局';
+        if (infoEl) infoEl.innerText = '荒牌流局，莊家連莊！';
+        playDrawSound();
+        speakText('流局');
+    } else {
+        const winner = state.players[s.winner];
+        const isSelfDraw = s.isSelfDraw;
+        const badgeText = isSelfDraw ? '自摸' : '胡';
+        
+        let relationStr = '';
+        if (s.winner !== myIndex) {
+            const relOffset = (s.winner - myIndex + 4) % 4;
+            if (relOffset === 1) relationStr = ' (下家)';
+            else if (relOffset === 2) relationStr = ' (對家)';
+            else if (relOffset === 3) relationStr = ' (上家)';
+        }
+
+        if (badgeEl) {
+            badgeEl.innerText = badgeText;
+            // 重新觸發彈出縮放動畫
+            badgeEl.parentElement.style.animation = 'none';
+            badgeEl.parentElement.offsetHeight; // trigger reflow
+            badgeEl.parentElement.style.animation = null;
+        }
+        if (infoEl) {
+            infoEl.innerText = `${winner.name}${relationStr} ${isSelfDraw ? '自摸！' : '胡牌！'}`;
+        }
+
+        // 高亮胡牌贏家所屬方位
+        const positions = ['bottom', 'right', 'top', 'left'];
+        const winnerPos = positions[(s.winner - myIndex + 4) % 4];
+        if (UI.infos[winnerPos] && UI.infos[winnerPos].parentElement) {
+            UI.infos[winnerPos].parentElement.classList.add('winner-highlight');
+        }
+
+        // 播放震撼勝利音效與語音
+        playWinSound(isSelfDraw);
+        speakText(isSelfDraw ? '自摸！' : '胡牌！');
+    }
+
+    if (overlay) {
+        overlay.classList.remove('hidden');
+    }
+}
+
 function getBotSpeed() {
     const val = parseInt(UI.botSpeed.value);
     return isNaN(val) ? 6000 : val;
@@ -889,6 +1039,12 @@ if (btnCheatApply && cheatHandSelect) {
 
 function startGameUI() {
     showScreen('game');
+    hideWinCelebration();
+    window.lastSettlementKey = null;
+    if (window.settlementTimer) {
+        clearTimeout(window.settlementTimer);
+        window.settlementTimer = null;
+    }
     if (network) {
         UI.gameSpeedSelect.disabled = !network.isHost;
         UI.botDifficulty.disabled = !network.isHost;
@@ -923,6 +1079,11 @@ function updateGameState(state, myIndex) {
     // 如果遊戲正在進行中，確保畫面切換回遊戲區（避免非房主卡在結算畫面）
     if (state.gameState === 'PLAYING' || state.gameState === 'WAIT_ACTION') {
         showScreen('game');
+        hideWinCelebration();
+        if (window.settlementTimer) {
+            clearTimeout(window.settlementTimer);
+            window.settlementTimer = null;
+        }
     }
     
     if (state.botSpeed && !network.isHost) {
@@ -1272,7 +1433,23 @@ function updateGameState(state, myIndex) {
     }
 
     if (state.gameState === 'GAME_OVER' && state.settlementData) {
-        showSettlement(state, myIndex);
+        const settlementKey = state.settlementData.timestamp || `${state.settlementData.winner}_${state.settlementData.isSelfDraw}_${state.dealerCount}`;
+        if (window.lastSettlementKey !== settlementKey) {
+            window.lastSettlementKey = settlementKey;
+            
+            // 1. 先在牌桌上與胡牌者位置顯示大大的「胡」/「自摸」與震撼音效
+            triggerWinCelebration(state, myIndex);
+            
+            // 2. 延遲 2.3 秒後再平滑切入結算明細畫面
+            if (window.settlementTimer) clearTimeout(window.settlementTimer);
+            window.settlementTimer = setTimeout(() => {
+                showSettlement(state, myIndex);
+                window.settlementTimer = null;
+            }, 2300);
+        } else if (!window.settlementTimer) {
+            // 如果已經在結算狀態中，直接顯示結算畫面
+            showSettlement(state, myIndex);
+        }
     }
 }
 
@@ -1309,6 +1486,7 @@ const TAI_EXPLANATIONS = {
 };
 
 function showSettlement(state, myIndex) {
+    hideWinCelebration();
     showScreen('settlement');
     const s = state.settlementData;
     let html = '';

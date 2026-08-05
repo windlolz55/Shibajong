@@ -490,7 +490,8 @@ class MahjongGame {
             taiDetails: taiData.details,
             totalTai: taiData.totalTai,
             baseScore: 50,
-            taiScore: 20
+            taiScore: 20,
+            timestamp: Date.now()
         };
 
         if (isSelfDraw) {
@@ -549,7 +550,8 @@ class MahjongGame {
             winner: -1,
             isDraw: true,
             scoreChanges: [0, 0, 0, 0],
-            dealerChanged: false // 流局連莊
+            dealerChanged: false, // 流局連莊
+            timestamp: Date.now()
         };
         this.dealerCount++;
         this.cheatTianTing = false;
@@ -849,19 +851,6 @@ class MahjongGame {
             
             this.handleWinGame(winner, loser);
         }
-    }
-
-    handleDrawGame() {
-        this.gameState = 'GAME_OVER';
-        this.winner = -1; // 流局
-        this.settlementData = {
-            winner: -1,
-            isDraw: true,
-            scoreChanges: [0, 0, 0, 0],
-            dealerChanged: false // 流局連莊
-        };
-        this.dealerCount++;
-        this.checkMatchOver();
     }
 
     getState() {

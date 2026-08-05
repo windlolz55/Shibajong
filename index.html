@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>喜八路麻</title>
-    <link rel="stylesheet" href="style.css?v=2.75">
+    <link rel="stylesheet" href="style.css?v=2.77">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.75<br>made by Kittenz
+                        當前版本：v2.77<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -241,6 +241,15 @@
             </div>
             <div id="action-popup" class="action-popup"></div>
             
+            <!-- 大大的胡牌/自摸 勝利慶祝特效 Overlay -->
+            <div id="win-celebration-overlay" class="win-celebration-overlay hidden">
+                <div class="win-banner-glow"></div>
+                <div class="win-content">
+                    <div id="win-celebration-badge" class="win-celebration-badge">胡</div>
+                    <div id="win-celebration-info" class="win-celebration-info">小華 胡牌！</div>
+                </div>
+            </div>
+            
             <!-- 台數表 UI -->
             <button class="circle-btn" id="btn-tai-ref" style="bottom: 20px; left: 20px; color: #facc15; border-color: #facc15;">📜</button>
             
@@ -374,8 +383,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.75"></script>
-    <script src="network.js?v=2.75"></script>
-    <script src="app.js?v=2.75"></script>
+    <script src="game.js?v=2.77"></script>
+    <script src="network.js?v=2.77"></script>
+    <script src="app.js?v=2.77"></script>
 </body>
 </html>
