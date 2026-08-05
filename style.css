@@ -446,7 +446,97 @@ button.primary:hover {
     padding: 8px 15px;
     white-space: nowrap;
 }
-#btn-toggle-mute { padding: 8px 15px; } /* Override for sound button */
+/* === 音量滑桿控制項 === */
+.volume-control-box {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 2px 8px 2px 4px;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.volume-control-box:hover {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: rgba(56, 189, 248, 0.5);
+}
+
+.volume-control-box #btn-toggle-mute {
+    background: transparent !important;
+    border: none !important;
+    padding: 4px 6px !important;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s ease, transform 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.volume-control-box #btn-toggle-mute:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    transform: scale(1.08);
+}
+
+.volume-slider-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 75px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.25);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.volume-slider:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+    background: #7dd3fc;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #38bdf8;
+    border: none;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.volume-slider::-moz-range-thumb:hover {
+    transform: scale(1.25);
+    background: #7dd3fc;
+}
+
 .top-right-controls { gap: 10px; }
 
 .circle-btn {
@@ -517,7 +607,7 @@ button.primary:hover {
         font-size: 0.6rem !important;
         height: auto;
     }
-    #btn-toggle-mute, #btn-back-home {
+    #btn-back-home {
         min-width: unset !important;
         width: 32px !important;
         height: 32px !important;
@@ -526,6 +616,30 @@ button.primary:hover {
         justify-content: center;
         align-items: center;
         overflow: hidden;
+    }
+    .volume-control-box {
+        padding: 0 4px 0 2px !important;
+        gap: 3px !important;
+        height: 32px;
+    }
+    .volume-control-box #btn-toggle-mute {
+        min-width: unset !important;
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.9rem !important;
+        padding: 0 !important;
+    }
+    .volume-slider {
+        width: 48px !important;
+        height: 4px !important;
+    }
+    .volume-slider::-webkit-slider-thumb {
+        width: 11px !important;
+        height: 11px !important;
+    }
+    .volume-slider::-moz-range-thumb {
+        width: 11px !important;
+        height: 11px !important;
     }
     .top-right-controls { 
         top: 10px !important;

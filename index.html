@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>喜八路麻</title>
-    <link rel="stylesheet" href="style.css?v=2.77">
+    <link rel="stylesheet" href="style.css?v=2.78">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -62,7 +62,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.77<br>made by Kittenz
+                        當前版本：v2.78<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -188,7 +188,12 @@
                     <option value="1_match">一將 (十六局)</option>
                     <option value="infinite" selected>無限局</option>
                 </select>
-                <button class="control-btn" id="btn-toggle-mute">🔊</button>
+                <div class="volume-control-box" id="volume-control-box">
+                    <button class="control-btn" id="btn-toggle-mute" title="靜音/開聲">🔊</button>
+                    <div class="volume-slider-wrapper">
+                        <input type="range" id="volume-slider" min="0" max="100" value="100" class="volume-slider" title="滑動調整音量">
+                    </div>
+                </div>
                 <button class="control-btn control-btn-red" id="btn-back-home">🏠 <span class="hide-on-mobile">返回大廳</span></button>
             </div>
             
@@ -383,8 +388,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.77"></script>
-    <script src="network.js?v=2.77"></script>
-    <script src="app.js?v=2.77"></script>
+    <script src="game.js?v=2.78"></script>
+    <script src="network.js?v=2.78"></script>
+    <script src="app.js?v=2.78"></script>
 </body>
 </html>

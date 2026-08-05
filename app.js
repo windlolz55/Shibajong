@@ -70,6 +70,7 @@ const UI = {
     btnForceDraw: document.getElementById('btn-force-draw'),
     btnForceWin: document.getElementById('btn-force-win'),
     btnToggleMute: document.getElementById('btn-toggle-mute'),
+    volumeSlider: document.getElementById('volume-slider'),
     adminPanel: document.getElementById('admin-panel'),
     btnAdminLogin: document.getElementById('btn-admin-login'),
     adminStatus: document.getElementById('admin-status'),
@@ -110,6 +111,21 @@ const UI = {
 window.addEventListener('DOMContentLoaded', () => {
     ChatManager.init();
 
+    // 初始化音量滑桿與控制按鈕
+    const volumeSlider = document.getElementById('volume-slider');
+    if (volumeSlider) {
+        volumeSlider.value = Math.round(gameVolume * 100);
+        volumeSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            setGameVolume(val);
+        });
+    }
+    const btnToggleMute = document.getElementById('btn-toggle-mute');
+    if (btnToggleMute) {
+        btnToggleMute.addEventListener('click', toggleMute);
+    }
+    updateVolumeUI(Math.round(gameVolume * 100));
+
     try {
         const savedName = localStorage.getItem('mj_playerName');
         if (savedName && UI.playerName) {
@@ -136,16 +152,75 @@ window.addEventListener('DOMContentLoaded', () => {
 
 let network = null;
 let audioCtx = null;
+let gameVolume = 1.0;
+let previousVolume = 1.0;
 let isMuted = false;
 let currentTimerInterval = null;
 window.isAdmin = false;
 
+// 從 localStorage 讀取儲存的音量偏好
+try {
+    const savedVol = localStorage.getItem('mj_volume');
+    if (savedVol !== null) {
+        const parsed = parseInt(savedVol, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+            gameVolume = parsed / 100;
+            previousVolume = gameVolume > 0 ? gameVolume : 1.0;
+            isMuted = (gameVolume === 0);
+        }
+    }
+} catch (e) {
+    console.warn("localStorage read mj_volume error:", e);
+}
+
 // --- Helper Functions ---
-function toggleMute() {
-    isMuted = !isMuted;
-    UI.btnToggleMute.innerText = isMuted ? '🔇' : '🔊';
+function updateVolumeUI(percent) {
+    const slider = document.getElementById('volume-slider');
+    if (slider && parseInt(slider.value, 10) !== percent) {
+        slider.value = percent;
+    }
+    const muteBtn = document.getElementById('btn-toggle-mute');
+    if (muteBtn) {
+        if (percent === 0) {
+            muteBtn.innerText = '🔇';
+            muteBtn.setAttribute('title', '已靜音 (點擊恢復音量)');
+        } else if (percent < 50) {
+            muteBtn.innerText = '🔉';
+            muteBtn.setAttribute('title', `音量: ${percent}% (點擊靜音)`);
+        } else {
+            muteBtn.innerText = '🔊';
+            muteBtn.setAttribute('title', `音量: ${percent}% (點擊靜音)`);
+        }
+    }
+}
+
+function setGameVolume(percent, save = true) {
+    percent = Math.max(0, Math.min(100, Math.round(percent)));
+    gameVolume = percent / 100;
+    isMuted = (percent === 0);
+    if (percent > 0) {
+        previousVolume = gameVolume;
+    }
+    updateVolumeUI(percent);
+
     if (isMuted && window.speechSynthesis) {
         window.speechSynthesis.cancel();
+    }
+
+    if (save) {
+        try {
+            localStorage.setItem('mj_volume', percent.toString());
+        } catch (e) {}
+    }
+}
+
+function toggleMute() {
+    if (gameVolume > 0) {
+        previousVolume = gameVolume;
+        setGameVolume(0);
+    } else {
+        const restoreVol = previousVolume > 0 ? Math.round(previousVolume * 100) : 100;
+        setGameVolume(restoreVol);
     }
 }
 
@@ -442,25 +517,27 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
     }
     
     // 只有在點選「快捷語音」按鈕時才播放專屬音效或 TTS 語音朗讀 (一般聊天室打字不會發出任何聲音)
-    if (isEmote && typeof isMuted !== 'undefined' && !isMuted) {
+    if (isEmote && typeof isMuted !== 'undefined' && !isMuted && gameVolume > 0) {
+        const playAudioFile = (file) => {
+            const audio = new Audio(file);
+            audio.volume = gameVolume;
+            audio.play().catch(e => console.error("Audio play failed:", e));
+        };
         if (text === '度！') {
-            const audio = new Audio('du.mp3');
-            audio.play().catch(e => console.error("Audio play failed:", e));
+            playAudioFile('du.mp3');
         } else if (text === 'dllm') {
-            const audio = new Audio('dllm.mp3');
-            audio.play().catch(e => console.error("Audio play failed:", e));
+            playAudioFile('dllm.mp3');
         } else if (text === '陽光彩虹小白馬') {
-            const audio = new Audio('Sunshine, Rainbow, White Pony.mp3');
-            audio.play().catch(e => console.error("Audio play failed:", e));
+            playAudioFile('Sunshine, Rainbow, White Pony.mp3');
         } else if (text === '葳葳孟孟') {
-            const audio = new Audio('Wei & Meng.mp3');
-            audio.play().catch(e => console.error("Audio play failed:", e));
+            playAudioFile('Wei & Meng.mp3');
         } else if (window.speechSynthesis) {
-            // 沒有專屬 mp3 音效的快捷語音（如「要吠來twitch陳景路吠」、「沒救 繼續沉淪」、「這把穩了」）使用 TTS 報讀
+            // 沒有專屬 mp3 音效的快捷語音使用 TTS 報讀
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'zh-TW';
             utterance.rate = 1.1;
+            utterance.volume = gameVolume;
             window.speechSynthesis.speak(utterance);
         }
     }
@@ -512,19 +589,20 @@ window.showNotification = function(message, isError = false) {
 };
 
 function speakText(text) {
-    if (isMuted || !window.speechSynthesis) return;
+    if (isMuted || gameVolume <= 0 || !window.speechSynthesis) return;
     window.speechSynthesis.cancel(); // 停止先前的語音
     // 使用 setTimeout 避免在 cancel 後立即 speak 導致 Chromium 引擎中斷
     setTimeout(() => {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'zh-TW';
         utterance.rate = 1.2;
+        utterance.volume = gameVolume;
         window.speechSynthesis.speak(utterance);
     }, 50);
 }
 
 function playDiscardSound() {
-    if (isMuted) return;
+    if (isMuted || gameVolume <= 0) return;
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -537,8 +615,8 @@ function playDiscardSound() {
     osc.frequency.setValueAtTime(400, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
 
-    gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+    gainNode.gain.setValueAtTime(1 * gameVolume, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01 * gameVolume, audioCtx.currentTime + 0.05);
 
     osc.connect(gainNode);
     gainNode.connect(audioCtx.destination);
@@ -548,7 +626,7 @@ function playDiscardSound() {
 }
 
 function playWinSound(isSelfDraw) {
-    if (isMuted) return;
+    if (isMuted || gameVolume <= 0) return;
     try {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -563,8 +641,8 @@ function playWinSound(isSelfDraw) {
         subOsc.type = 'sine';
         subOsc.frequency.setValueAtTime(160, now);
         subOsc.frequency.exponentialRampToValueAtTime(30, now + 0.65);
-        subGain.gain.setValueAtTime(1.0, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+        subGain.gain.setValueAtTime(1.0 * gameVolume, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001 * gameVolume, now + 0.65);
         subOsc.connect(subGain);
         subGain.connect(audioCtx.destination);
         subOsc.start(now);
@@ -579,8 +657,8 @@ function playWinSound(isSelfDraw) {
             const noteStart = now + (idx * 0.035);
             osc.frequency.setValueAtTime(freq, noteStart);
             
-            gain.gain.setValueAtTime(0.25, noteStart);
-            gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 1.2);
+            gain.gain.setValueAtTime(0.25 * gameVolume, noteStart);
+            gain.gain.exponentialRampToValueAtTime(0.001 * gameVolume, noteStart + 1.2);
             
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -596,8 +674,8 @@ function playWinSound(isSelfDraw) {
             sOsc.type = 'sine';
             const sStart = now + 0.22 + (i * 0.05);
             sOsc.frequency.setValueAtTime(freq, sStart);
-            sGain.gain.setValueAtTime(0.18, sStart);
-            sGain.gain.exponentialRampToValueAtTime(0.001, sStart + 0.45);
+            sGain.gain.setValueAtTime(0.18 * gameVolume, sStart);
+            sGain.gain.exponentialRampToValueAtTime(0.001 * gameVolume, sStart + 0.45);
             sOsc.connect(sGain);
             sGain.connect(audioCtx.destination);
             sOsc.start(sStart);
@@ -609,7 +687,7 @@ function playWinSound(isSelfDraw) {
 }
 
 function playDrawSound() {
-    if (isMuted) return;
+    if (isMuted || gameVolume <= 0) return;
     try {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -621,8 +699,8 @@ function playDrawSound() {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(280, now);
         osc.frequency.exponentialRampToValueAtTime(140, now + 0.45);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        gain.gain.setValueAtTime(0.4 * gameVolume, now);
+        gain.gain.exponentialRampToValueAtTime(0.01 * gameVolume, now + 0.45);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(now);
