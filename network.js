@@ -588,17 +588,25 @@ class MahjongNetwork {
         if (state.gameState === 'PLAYING') {
             const currentPlayer = this.game.players[state.currentTurn];
             const isTenpai = state.tenpaiStatus && state.tenpaiStatus[state.currentTurn];
-            if (currentPlayer.isBot || isTenpai) {
+            
+            if (currentPlayer.isBot) {
+                // 電腦玩家：不管房間設定幾秒，都固定只保留 1.5 秒預設動作緩衝
                 state.timerEnabled = true;
-                const offset = 1500;
                 if (shouldResetTimer) {
-                    // 聽牌後人類自動摸打時間可短一點(例如1000ms)，如果是電腦則照原本設定
-                    const baseTime = isTenpai && !currentPlayer.isBot ? 1000 : this.botSpeed;
-                    this.globalDeadline = Date.now() + baseTime + offset;
+                    this.globalDeadline = Date.now() + 1500;
                 }
                 state.deadline = this.globalDeadline;
-                state.visualDelay = shouldResetTimer ? offset : 0;
+                state.visualDelay = shouldResetTimer ? 1500 : 0;
+            } else if (isTenpai) {
+                // 聽牌真人自動摸打：固定保留 1.5 秒緩衝後自動摸打
+                state.timerEnabled = true;
+                if (shouldResetTimer) {
+                    this.globalDeadline = Date.now() + 1500;
+                }
+                state.deadline = this.globalDeadline;
+                state.visualDelay = shouldResetTimer ? 1500 : 0;
             } else {
+                // 真人玩家：依照房間設定的秒數 (this.botSpeed)
                 const isRecentAction = state.actionEvent && (Date.now() - state.actionEvent.timestamp < 1000);
                 const delay = (shouldResetTimer && isRecentAction) ? 1500 : 0;
                 
@@ -620,16 +628,20 @@ class MahjongNetwork {
             
             if (hasHumanPending && this.isLocalSinglePlayer) {
                 state.timerEnabled = false; 
+                state.visualDelay = shouldResetTimer ? 1500 : 0;
             } else if (!hasHumanPending) {
+                // 全部都是電腦等待響應（吃碰槓胡）：不管設定幾秒，只保留 1.5 秒預設動作緩衝
                 state.timerEnabled = true;
                 if (shouldResetTimer) this.globalDeadline = Date.now() + 1500;
                 state.deadline = this.globalDeadline;
+                state.visualDelay = shouldResetTimer ? 1500 : 0;
             } else {
+                // 有真人等待響應 (連線)：真人依照設定的秒數 (this.botSpeed) + 1.5 秒視覺緩衝
                 state.timerEnabled = true;
                 if (shouldResetTimer) this.globalDeadline = Date.now() + this.botSpeed + 1500;
                 state.deadline = this.globalDeadline;
+                state.visualDelay = shouldResetTimer ? 1500 : 0;
             }
-            state.visualDelay = shouldResetTimer ? 1500 : 0;
         } else {
             state.timerEnabled = false;
         }
@@ -695,7 +707,7 @@ class MahjongNetwork {
                         const hand = state.hands[state.currentTurn];
                         actionData = hand[hand.length - 1].id;
                     } else {
-                        // 電腦玩家或未聽牌的玩家(不可能發生)交給 AI 決定
+                        // 電腦玩家或未聽牌的玩家交給 AI 決定
                         const difficulty = this.game.botDifficulty || 'normal';
                         actionData = this.game.getBotDiscardAction(state.currentTurn, difficulty);
                     }
