@@ -17,6 +17,7 @@ class MahjongNetwork {
         this.onChatMessage = onChatMessage;
         this.botSpeed = botSpeed;
         this.gameLength = 'infinite';
+        this.stakeConfig = '100_20_3000';
         
         this.globalTimer = null;
         this.lastTurnEpoch = -1;
@@ -109,12 +110,13 @@ class MahjongNetwork {
         return msg;
     }
 
-    createRoom(playerName, gameLength = 'infinite') {
+    createRoom(playerName, gameLength = 'infinite', stakeConfig = '100_20_3000') {
         this.playerName = playerName;
         this.isHost = true;
         this.myPlayerIndex = 0;
         this.gameLength = gameLength;
-        this.game = new MahjongGame(gameLength);
+        this.stakeConfig = stakeConfig;
+        this.game = new MahjongGame(gameLength, stakeConfig);
         this.game.players.push({ name: playerName, index: 0, id: 'host', isBot: false });
 
         return new Promise((resolve, reject) => {
@@ -249,8 +251,8 @@ class MahjongNetwork {
             isBot: true,
             isReady: true 
         });
-        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
     }
 
     removePlayer(index) {
@@ -259,15 +261,15 @@ class MahjongNetwork {
         if (this.game.gameState !== 'INIT') {
             // Game already started, mark as disconnected but do not remove
             this.game.players[index].isConnected = false;
-            this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-            this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+            this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+            this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
             return;
         }
 
         this.game.players.splice(index, 1);
         this.game.players.forEach((p, i) => p.index = i);
-        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
     }
 
     startHostHeartbeat() {
@@ -375,8 +377,8 @@ class MahjongNetwork {
                             conn.send({ type: 'game_start' });
                         }
                         
-                        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-                        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+                        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+                        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
                         if (window.showNotification) window.showNotification(`${data.playerName} 已重新連線`);
                         
                         if (this.game.gameState !== 'INIT') {
@@ -394,8 +396,8 @@ class MahjongNetwork {
                             isConnected: true 
                         });
                         conn.send({ type: 'assign_index', index: newPlayerIndex });
-                        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-                        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+                        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+                        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
                         if (window.showNotification) window.showNotification(`${data.playerName} 加入房間`);
                     } else {
                         // 房間已滿或遊戲已開始，拒絕加入
@@ -424,8 +426,8 @@ class MahjongNetwork {
                 const player = this.game.players.find(p => p.id === conn.peer);
                 if (player) {
                     player.isReady = !player.isReady;
-                    this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-                    this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+                    this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+                    this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
                 }
             }
         });
@@ -571,8 +573,8 @@ class MahjongNetwork {
             }
         }
         
-        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength } });
-        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength });
+        this.broadcast({ type: 'update_players', players: this.game.players, settings: { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig } });
+        this.onPlayerListUpdate(this.game.players, { botSpeed: this.botSpeed, gameLength: this.gameLength, stakeConfig: this.stakeConfig });
     }
 
     startGame() {

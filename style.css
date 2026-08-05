@@ -299,13 +299,19 @@ button.primary:hover {
 }
 .hidden-tile .tile-face { display: none; }
 
-.left-player .hidden-tile, .right-player .hidden-tile {
+.left-player .hand .hidden-tile, .right-player .hand .hidden-tile {
     width: calc(var(--tile-height) * 0.7); height: calc(var(--tile-width) * 0.65);
     box-shadow: 4px 2px 0 #166534, 5px 2px 5px rgba(0,0,0,0.5);
 }
 
+.left-player .meld-tile.hidden-tile, .right-player .meld-tile.hidden-tile {
+    width: calc(var(--tile-height) * 0.45); height: calc(var(--tile-width) * 0.42);
+    box-shadow: 3px 2px 0 #166534, 3px 2px 4px rgba(0,0,0,0.4);
+}
+
 /* Meld Tiles are smaller */
 .meld-tile { width: calc(var(--tile-width) * 0.6); height: calc(var(--tile-height) * 0.6); box-shadow: 1px 2px 0 #94a3b8; }
+.meld-tile.hidden-tile { box-shadow: 1px 2px 0 #166534, 1px 3px 4px rgba(0,0,0,0.4); }
 .meld-tile .t-val { font-size: 1rem; }
 .meld-tile .t-suit { font-size: 0.8rem; }
 .meld-tile .t-big { font-size: 1.2rem; }

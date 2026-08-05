@@ -10,7 +10,7 @@ const DRAGON_NAMES = ['中', '發', '白'];
 const FLOWER_NAMES = ['春', '夏', '秋', '冬', '梅', '蘭', '竹', '菊'];
 
 class MahjongGame {
-    constructor(gameLength = 'infinite') {
+    constructor(gameLength = 'infinite', stakeConfig = '100_20_3000') {
         this.deck = [];
         this.players = []; 
         this.hands = [[], [], [], []];
@@ -18,7 +18,23 @@ class MahjongGame {
         this.discardPool = [];
         this.currentTurn = 0;
         this.dealerIndex = 0;
-        this.scores = [1000, 1000, 1000, 1000]; // 每個玩家的初始分數
+        
+        // 底台與初始資金設定
+        this.stakeConfig = stakeConfig; // '100_20_3000' 或 '50_20_1500'
+        let baseScore = 100, taiScore = 20, initialScore = 3000;
+        if (stakeConfig === '50_20_1500' || stakeConfig === '50_20_5000') {
+            baseScore = 50;
+            taiScore = 20;
+            initialScore = 1500;
+        } else if (stakeConfig === '100_20_3000' || stakeConfig === '100_20_10000') {
+            baseScore = 100;
+            taiScore = 20;
+            initialScore = 3000;
+        }
+        this.baseScore = baseScore;
+        this.taiScore = taiScore;
+        this.initialScore = initialScore;
+        this.scores = [initialScore, initialScore, initialScore, initialScore];
         
         this.gameState = 'INIT';
         this.pendingActions = [];
@@ -460,8 +476,10 @@ class MahjongGame {
     executeChow(playerIndex, tile, payloadTiles) {
         let hand = this.hands[playerIndex];
         this.hands[playerIndex] = hand.filter(t => !(t.id === payloadTiles[0].id || t.id === payloadTiles[1].id));
-        let newMeld = [payloadTiles[0], payloadTiles[1], tile];
-        newMeld.sort((a,b) => a.value - b.value);
+        // 台灣麻將規則：吃牌時，吃進來的牌置於副露組正中間，自己手牌的兩張置於左右兩側
+        let handTiles = [payloadTiles[0], payloadTiles[1]];
+        handTiles.sort((a, b) => a.value - b.value);
+        let newMeld = [handTiles[0], tile, handTiles[1]];
         this.melds[playerIndex].push({ type: 'CHOW', tiles: newMeld });
         this.actionEvent = { playerIndex, type: '吃', tile, timestamp: Date.now() };
     }
@@ -478,9 +496,12 @@ class MahjongGame {
         const isSelfDraw = (winnerIndex === loserIndex); // 自摸
         // 無論是自摸還是別人放槍，這張胡的牌都會被加到 winner 的 hands 最後面
         const winningTile = this.hands[winnerIndex][this.hands[winnerIndex].length - 1];
+        const isWinnerDealer = (winnerIndex === this.dealerIndex);
+        
+        // 莊家與連莊額外台數 (莊家 1 台 + 連 N 拉 N 2N 台)
+        const dealerStreakTai = 1 + (this.dealerCount * 2);
         
         const taiData = this.calculateTai(winnerIndex, winningTile, isSelfDraw, loserIndex);
-        let scoreChange = 50 + (taiData.totalTai * 20); // 底 50，一台 20
         
         this.settlementData = {
             winner: winnerIndex,
@@ -489,21 +510,47 @@ class MahjongGame {
             scoreChanges: [0, 0, 0, 0],
             taiDetails: taiData.details,
             totalTai: taiData.totalTai,
-            baseScore: 50,
-            taiScore: 20,
+            baseScore: this.baseScore,
+            taiScore: this.taiScore,
+            dealer: this.dealerIndex,
+            dealerStreakTai: (isSelfDraw && !isWinnerDealer) ? dealerStreakTai : 0,
+            dealerCount: this.dealerCount,
             timestamp: Date.now()
         };
 
         if (isSelfDraw) {
-            for(let i=0; i<4; i++) {
-                if (i !== winnerIndex) {
-                    this.scores[i] -= scoreChange;
-                    this.scores[winnerIndex] += scoreChange;
-                    this.settlementData.scoreChanges[i] = -scoreChange;
-                    this.settlementData.scoreChanges[winnerIndex] += scoreChange;
+            if (isWinnerDealer) {
+                // 1. 莊家自摸：三家閒家均需多賠莊家台與連莊台 (calculateTai 內已包含)
+                const winAmount = this.baseScore + (taiData.totalTai * this.taiScore);
+                for (let i = 0; i < 4; i++) {
+                    if (i !== winnerIndex) {
+                        this.scores[i] -= winAmount;
+                        this.scores[winnerIndex] += winAmount;
+                        this.settlementData.scoreChanges[i] = -winAmount;
+                        this.settlementData.scoreChanges[winnerIndex] += winAmount;
+                    }
+                }
+            } else {
+                // 2. 閒家自摸：另外兩家閒家只賠基礎台數，只有莊家需多賠 (莊家1台 + 連N拉N 2N台)
+                const baseAmount = this.baseScore + (taiData.totalTai * this.taiScore);
+                const dealerTai = taiData.totalTai + dealerStreakTai;
+                const dealerAmount = this.baseScore + (dealerTai * this.taiScore);
+                
+                for (let i = 0; i < 4; i++) {
+                    if (i === winnerIndex) continue;
+                    
+                    const amount = (i === this.dealerIndex) ? dealerAmount : baseAmount;
+                    this.scores[i] -= amount;
+                    this.scores[winnerIndex] += amount;
+                    this.settlementData.scoreChanges[i] = -amount;
+                    this.settlementData.scoreChanges[winnerIndex] += amount;
                 }
             }
         } else {
+            // 放槍 (抓沖)
+            // 若莊家放槍 或 莊家胡人，calculateTai 內已包含 (莊家1台 + 連N拉N)
+            // 若閒家放槍給閒家，calculateTai 內不含任何莊家台
+            const scoreChange = this.baseScore + (taiData.totalTai * this.taiScore);
             this.scores[loserIndex] -= scoreChange;
             this.scores[winnerIndex] += scoreChange;
             this.settlementData.scoreChanges[loserIndex] = -scoreChange;
@@ -511,7 +558,7 @@ class MahjongGame {
         }
 
         // 莊家連莊邏輯
-        if (winnerIndex === this.dealerIndex || (isSelfDraw && this.dealerIndex === winnerIndex)) {
+        if (winnerIndex === this.dealerIndex) {
             this.dealerCount++; // 連莊
             this.settlementData.dealerChanged = false;
         } else {
@@ -551,6 +598,10 @@ class MahjongGame {
             isDraw: true,
             scoreChanges: [0, 0, 0, 0],
             dealerChanged: false, // 流局連莊
+            dealer: this.dealerIndex,
+            dealerCount: this.dealerCount,
+            baseScore: this.baseScore,
+            taiScore: this.taiScore,
             timestamp: Date.now()
         };
         this.dealerCount++;
@@ -602,8 +653,12 @@ class MahjongGame {
             totalTai += 4;
         }
 
-        // 1. 莊家與連莊
-        if (isDealer || isSelfDraw || loserIndex === this.dealerIndex) {
+        // 1. 莊家與連莊台數
+        // 只有在以下情況直接計入基礎台數：
+        // 1) 贏家是莊家 (莊家自摸或莊家抓沖)
+        // 2) 輸家放炮者是莊家 (閒家抓沖莊家)
+        // (若為閒家自摸，基礎台數不計莊家台，莊家多賠的部分由結算扣款與明細獨立處理)
+        if (isDealer || (!isSelfDraw && loserIndex === this.dealerIndex)) {
             details.push({ name: '莊家', tai: 1 });
             totalTai += 1;
             
@@ -896,6 +951,10 @@ class MahjongGame {
             tenpaiStatus: this.tenpaiStatus,
             isTianDiTingEligible: this.checkTianDiTingEligibility(),
             gameLength: this.gameLength,
+            stakeConfig: this.stakeConfig,
+            baseScore: this.baseScore,
+            taiScore: this.taiScore,
+            initialScore: this.initialScore,
             roundWind: this.roundWind,
             isMatchOver: this.isMatchOver,
             dealerCount: this.dealerCount

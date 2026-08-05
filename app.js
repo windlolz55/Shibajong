@@ -531,6 +531,8 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
             playAudioFile('Sunshine, Rainbow, White Pony.mp3');
         } else if (text === '葳葳孟孟') {
             playAudioFile('Wei & Meng.mp3');
+        } else if (text === '對不起 我沒打好' || text === '對不起我沒打好') {
+            playAudioFile('sorry.mp3');
         } else if (window.speechSynthesis) {
             // 沒有專屬 mp3 音效的快捷語音使用 TTS 報讀
             window.speechSynthesis.cancel();
@@ -800,11 +802,12 @@ UI.btnSinglePlayer.addEventListener('click', async () => {
     ChatManager.reset();
     
     const gameLength = document.getElementById('game-length-select-lobby').value;
+    const stakeConfig = document.getElementById('game-stake-select-lobby').value;
     
     network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed(), (msg) => ChatManager.addMessage(msg));
     network.isLocalSinglePlayer = true;
     try {
-        await network.createRoom(name, gameLength);
+        await network.createRoom(name, gameLength, stakeConfig);
         for(let i=0; i<3; i++) {
             network.addBot();
         }
@@ -823,11 +826,12 @@ UI.btnCreate.addEventListener('click', async () => {
     ChatManager.reset();
     
     const gameLength = document.getElementById('game-length-select-lobby').value;
+    const stakeConfig = document.getElementById('game-stake-select-lobby').value;
     
     network = new MahjongNetwork(updateGameState, updatePlayerList, startGameUI, getBotSpeed(), (msg) => ChatManager.addMessage(msg));
     network.isLocalSinglePlayer = false;
     try {
-        const roomId = await network.createRoom(name, gameLength);
+        const roomId = await network.createRoom(name, gameLength, stakeConfig);
         stopLoadingProgress(true);
         UI.displayRoomCode.innerText = roomId;
 
@@ -838,7 +842,7 @@ UI.btnCreate.addEventListener('click', async () => {
         } catch (e) {}
 
         showScreen('waiting');
-        updatePlayerList(network.game.players, { botSpeed: network.botSpeed, gameLength: network.gameLength });
+        updatePlayerList(network.game.players, { botSpeed: network.botSpeed, gameLength: network.gameLength, stakeConfig: network.stakeConfig });
     } catch (err) {
         stopLoadingProgress(false);
         UI.lobbyStatus.innerText = '建立房間失敗：' + err.message;
@@ -1015,11 +1019,35 @@ function updatePlayerList(players, settings) {
         else if (settings.botSpeed == 3000) speedText = "極速 (3秒)";
         else if (settings.botSpeed == 5000) speedText = "標準 (5秒)";
         else if (settings.botSpeed == 10000) speedText = "慢 (10秒)";
+
+        let stakeRateText = "100 底 / 20 台";
+        let initialFundText = "$3,000";
+        if (settings.stakeConfig === '50_20_1500' || settings.stakeConfig === '50_20_5000') {
+            stakeRateText = "50 底 / 20 台";
+            initialFundText = "$1,500";
+        } else if (settings.stakeConfig === '100_20_3000' || settings.stakeConfig === '100_20_10000') {
+            stakeRateText = "100 底 / 20 台";
+            initialFundText = "$3,000";
+        }
         
         roomSettingsDiv.innerHTML = `
-            <h3 style="margin-top: 0; margin-bottom: 10px; color: #cbd5e1; font-size: 1.1rem;">房間設定</h3>
-            <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">出牌時間：<span style="color: #fff; font-weight: bold;">${speedText}</span></p>
-            <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">遊戲長度：<span style="color: #fff; font-weight: bold;">${lengthText}</span></p>
+            <h3 style="margin-top: 0; margin-bottom: 12px; color: #cbd5e1; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">房間設定</h3>
+            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                <span>底台設定：</span>
+                <span style="color: #4ade80; font-weight: bold;">${stakeRateText}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                <span>初始資金：</span>
+                <span style="color: #facc15; font-weight: bold;">${initialFundText}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                <span>出牌時間：</span>
+                <span style="color: #fff; font-weight: bold;">${speedText}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                <span>遊戲長度：</span>
+                <span style="color: #fff; font-weight: bold;">${lengthText}</span>
+            </div>
         `;
         roomSettingsDiv.style.display = 'block';
     }
@@ -1569,6 +1597,12 @@ function showSettlement(state, myIndex) {
     const s = state.settlementData;
     let html = '';
 
+    const dealerIndex = (s.dealer !== undefined) ? s.dealer : state.dealerIndex;
+    const dealerCount = (s.dealerCount !== undefined) ? s.dealerCount : state.dealerCount;
+    const dealerPlayer = state.players[dealerIndex];
+    const baseScore = s.baseScore || state.baseScore || 100;
+    const taiScore = s.taiScore || state.taiScore || 20;
+
     if (state.isMatchOver) {
         let bestScore = -Infinity;
         let matchWinnerName = "";
@@ -1588,6 +1622,11 @@ function showSettlement(state, myIndex) {
             <h2 style="color: #fff; margin: 0; font-size: 1.8rem;">🏆 最終贏家：<span style="color: #4ade80;">${matchWinnerName}</span> <span style="font-size: 1.2rem; color: #cbd5e1;">(${bestScore} 分)</span></h2>
         </div>`;
     }
+
+    // 頂部資訊列：顯示底台設定
+    html += `<div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+        <span style="background:rgba(56,189,248,0.18); border:1px solid #38bdf8; color:#38bdf8; padding:4px 14px; border-radius:20px; font-weight:bold; font-size:0.95rem;">🎮 ${baseScore} 底 / ${taiScore} 台</span>
+    </div>`;
 
     if (s.isDraw) {
         html += `<h2 style="color:#facc15; font-size: 1.8rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">流局</h2>`;
@@ -1625,34 +1664,99 @@ function showSettlement(state, myIndex) {
         
         // 顯示台數明細
         if (s.taiDetails) {
-            const totalAmount = s.baseScore + (s.totalTai * s.taiScore);
             html += `<div style="margin-top:20px; text-align:center;">`;
-            html += `<p style="font-size:1.2rem; margin:10px 0;">台數：<span style="color:#facc15; font-weight:bold;">${s.totalTai} 台</span> <span style="color:#cbd5e1; font-size:1rem;">(底${s.baseScore}+${s.totalTai}台×${s.taiScore} = ${totalAmount})</span></p>`;
             
             let detailNames = "無";
             if (s.taiDetails.length > 0) {
                 detailNames = s.taiDetails.map(d => {
                     const explain = TAI_EXPLANATIONS[d.name] || '無特別說明';
                     const taiStr = d.tai > 0 ? ` (${d.tai}台)` : '';
-                    const baseName = d.name.split(' (')[0]; // 若有附加說明，例如正花 (春)
+                    const baseName = d.name.split(' (')[0];
                     let explainFinal = TAI_EXPLANATIONS[baseName] || explain;
                     if (baseName.startsWith('連') && baseName.includes('拉')) explainFinal = '每連一次加2台';
                     return `<span class="tai-tooltip">${d.name}${taiStr}<span class="tai-tooltip-text">${explainFinal}</span></span>`;
                 }).join('、');
             }
-            html += `<p style="color:#cbd5e1; margin:15px 0; line-height:2;">台數明細：${detailNames}</p>`;
+            if (s.dealerStreakTai && s.dealerStreakTai > 0) {
+                const streakText = s.dealerCount > 0 ? `、莊家多賠 (莊家1台 + 連${s.dealerCount}拉${s.dealerCount} ${s.dealerCount*2}台)` : '、莊家多賠 (莊家1台)';
+                detailNames += `<span style="color:#f87171; font-weight:bold;">${streakText}</span>`;
+            }
+            html += `<p style="color:#cbd5e1; margin:10px 0 15px 0; line-height:2;">台數明細：${detailNames}</p>`;
+
+            // 詳細計算過程卡片
+            if (s.isSelfDraw) {
+                if (s.winner === dealerIndex) {
+                    // 莊家自摸
+                    const winAmount = baseScore + (s.totalTai * taiScore);
+                    const winnerGain = winAmount * 3;
+                    html += `<div style="background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px 18px; margin: 15px auto; max-width: 540px; text-align: left; font-size: 0.95rem; line-height: 1.7;">
+                        <div style="color: #facc15; font-weight: bold; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 4px;">
+                            🧮 底台計算過程（莊家自摸 ${s.totalTai} 台）：
+                        </div>
+                        <div style="color: #e2e8f0;">
+                            • <span style="color:#93c5fd;">閒家各賠 (3位)</span>：底 ${baseScore} + (${s.totalTai}台 × ${taiScore}) = <b style="color:#ef4444;">-$${winAmount}</b> / 人
+                        </div>
+                        <div style="color: #4ade80; margin-top: 6px; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">
+                            ➔ 莊家自摸總收益：${winAmount} × 3 = <span style="color:#4ade80; font-size:1.05rem;">+$${winnerGain}</span>
+                        </div>
+                    </div>`;
+                } else {
+                    // 閒家自摸
+                    const baseAmount = baseScore + (s.totalTai * taiScore);
+                    const dealerTai = s.totalTai + (s.dealerStreakTai || 0);
+                    const dealerAmount = baseScore + (dealerTai * taiScore);
+                    const winnerGain = (baseAmount * 2) + dealerAmount;
+                    const dealerNote = (s.dealerCount > 0) ? `莊家1台 + 連${s.dealerCount}拉${s.dealerCount} ${s.dealerCount*2}台` : `莊家1台`;
+                    html += `<div style="background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px 18px; margin: 15px auto; max-width: 540px; text-align: left; font-size: 0.95rem; line-height: 1.7;">
+                        <div style="color: #facc15; font-weight: bold; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 4px;">
+                            🧮 底台計算過程（閒家自摸基礎 ${s.totalTai} 台）：
+                        </div>
+                        <div style="color: #e2e8f0;">
+                            • <span style="color:#93c5fd;">閒家賠付 (2位)</span>：底 ${baseScore} + (${s.totalTai}台 × ${taiScore}) = <b style="color:#ef4444;">-$${baseAmount}</b> / 人
+                        </div>
+                        <div style="color: #e2e8f0; margin-top: 3px;">
+                            • <span style="color:#fcd34d;">莊家賠付 (多付${dealerNote}=${dealerTai}台)</span>：底 ${baseScore} + (${dealerTai}台 × ${taiScore}) = <b style="color:#ef4444;">-$${dealerAmount}</b>
+                        </div>
+                        <div style="color: #4ade80; margin-top: 6px; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">
+                            ➔ 贏家自摸總收益：${baseAmount} × 2 + ${dealerAmount} = <span style="color:#4ade80; font-size:1.05rem;">+$${winnerGain}</span>
+                        </div>
+                    </div>`;
+                }
+            } else {
+                // 放槍
+                const scoreChange = baseScore + (s.totalTai * taiScore);
+                const isLoserDealer = (s.loser === dealerIndex);
+                const isWinnerDealer = (s.winner === dealerIndex);
+                let extraFormulaNote = '';
+                if (isWinnerDealer) extraFormulaNote = ' (含莊家/連莊台)';
+                else if (isLoserDealer) extraFormulaNote = ' (莊家放槍多賠莊家/連莊台)';
+                html += `<div style="background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px 18px; margin: 15px auto; max-width: 540px; text-align: left; font-size: 0.95rem; line-height: 1.7;">
+                    <div style="color: #facc15; font-weight: bold; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 4px;">
+                        🧮 底台計算過程（共 ${s.totalTai} 台${extraFormulaNote}）：
+                    </div>
+                    <div style="color: #e2e8f0;">
+                        • <span style="color:#f87171;">放槍者 (${loser.name}) 賠付</span>：底 ${baseScore} + (${s.totalTai}台 × ${taiScore}) = <b style="color:#ef4444;">-$${scoreChange}</b>
+                    </div>
+                    <div style="color: #4ade80; margin-top: 6px; font-weight: bold; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;">
+                        ➔ 贏家 (${winner.name}) 收益：<span style="color:#4ade80; font-size:1.05rem;">+$${scoreChange}</span>
+                    </div>
+                </div>`;
+            }
+
             html += `</div>`;
         }
     }
 
-    html += `<table style="width:100%; text-align:left; margin-top:30px; border-collapse: collapse;">`;
+    html += `<table style="width:100%; text-align:left; margin-top:25px; border-collapse: collapse;">`;
     state.players.forEach((p, idx) => {
         const change = s.scoreChanges[idx];
         const color = change > 0 ? '#4ade80' : (change < 0 ? '#ef4444' : '#fff');
         const sign = change > 0 ? '+' : '';
+        const isThisDealer = (idx === dealerIndex);
+        const dealerTag = isThisDealer ? `<span style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; border-radius:4px; font-size:11px; padding:1px 5px; margin-left:6px; font-weight:bold;">👑 莊</span>` : '';
         html += `<tr>
-            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); width:40%;">${p.name}</td>
-            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); text-align:right; color:${color}; width:30%;">${sign}${change}</td>
+            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); width:40%;">${p.name}${dealerTag}</td>
+            <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); text-align:right; color:${color}; width:30%; font-weight:bold;">${sign}${change}</td>
             <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.1); text-align:right; color:#facc15; width:30%;">→ $${state.scores[idx]}</td>
         </tr>`;
     });
@@ -1664,6 +1768,8 @@ function showSettlement(state, myIndex) {
         html += `<p style="margin-top:20px; color:#94a3b8;">下莊！下一局莊家換人。</p>`;
     } else if (!s.isDraw) {
         html += `<p style="margin-top:20px; color:#facc15;">莊家胡牌，連莊！</p>`;
+    } else if (s.isDraw) {
+        html += `<p style="margin-top:20px; color:#facc15;">流局，莊家連莊！</p>`;
     }
 
     UI.settlementContent.innerHTML = html;
@@ -1738,7 +1844,16 @@ function renderMelds(position, meldData, isMe) {
         meld.tiles.forEach(tile => {
             const tileDiv = document.createElement('div');
             tileDiv.className = 'tile meld-tile';
-            tileDiv.innerHTML = getTileHTML(tile);
+            
+            // 暗槓：若不是自己 (且尚未進入結算揭牌)，對手只能看到蓋牌背面
+            if (meld.type === 'ANKONG' && !isMe) {
+                tileDiv.classList.add('hidden-tile');
+            } else {
+                tileDiv.innerHTML = getTileHTML(tile);
+                if (meld.type === 'ANKONG') {
+                    tileDiv.style.filter = 'brightness(0.92)';
+                }
+            }
             groupDiv.appendChild(tileDiv);
         });
         

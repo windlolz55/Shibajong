@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>喜八路麻</title>
-    <link rel="stylesheet" href="style.css?v=2.80">
+    <link rel="stylesheet" href="style.css?v=2.87">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -44,6 +44,14 @@
                     </select>
                 </div>
                 
+                <div style="margin-bottom: 15px; text-align: left;">
+                    <label style="display:block; margin-bottom:5px; color:#cbd5e1; font-size:0.9rem;">底台與資金:</label>
+                    <select id="game-stake-select-lobby" style="width:100%; padding: 10px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
+                        <option value="100_20_3000" selected>100 底 / 20 台 (初始資金 3,000)</option>
+                        <option value="50_20_1500">50 底 / 20 台 (初始資金 1,500)</option>
+                    </select>
+                </div>
+
                 <div style="margin-bottom: 25px; text-align: left;">
                     <label style="display:block; margin-bottom:5px; color:#cbd5e1; font-size:0.9rem;">遊戲長度:</label>
                     <select id="game-length-select-lobby" style="width:100%; padding: 10px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;">
@@ -62,7 +70,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.80<br>made by Kittenz
+                        當前版本：v2.87<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -90,9 +98,23 @@
                 </div>
                 
                 <div id="room-settings-display" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: left; display: none;">
-                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #cbd5e1; font-size: 1.1rem;">房間設定</h3>
-                    <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">出牌時間：<span id="display-room-speed" style="color: #fff; font-weight: bold;"></span></p>
-                    <p style="margin: 5px 0; color: #94a3b8; font-size: 0.95rem;">遊戲長度：<span id="display-room-length" style="color: #fff; font-weight: bold;"></span></p>
+                    <h3 style="margin-top: 0; margin-bottom: 12px; color: #cbd5e1; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">房間設定</h3>
+                    <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                        <span>底台設定：</span>
+                        <span id="display-room-stake" style="color: #4ade80; font-weight: bold;"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                        <span>初始資金：</span>
+                        <span id="display-room-funds" style="color: #facc15; font-weight: bold;"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                        <span>出牌時間：</span>
+                        <span id="display-room-speed" style="color: #fff; font-weight: bold;"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
+                        <span>遊戲長度：</span>
+                        <span id="display-room-length" style="color: #fff; font-weight: bold;"></span>
+                    </div>
                 </div>
 
                 <!-- 等待室聊天室 -->
@@ -298,6 +320,7 @@
                         <button class="btn-emote-option" data-text="dllm">dllm</button>
                         <button class="btn-emote-option" data-text="陽光彩虹小白馬">陽光彩虹小白馬</button>
                         <button class="btn-emote-option" data-text="葳葳孟孟">葳葳孟孟</button>
+                        <button class="btn-emote-option" data-text="對不起 我沒打好">對不起 我沒打好</button>
                         <button id="btn-emote-prev" class="btn-emote-nav">⬅ 上一頁</button>
                     </div>
                 </div>
