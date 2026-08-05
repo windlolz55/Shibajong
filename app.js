@@ -1848,7 +1848,7 @@ function showChowOptions(options) {
 const disconnectMsg = sessionStorage.getItem('disconnectMsg');
 if (disconnectMsg) {
     sessionStorage.removeItem('disconnectMsg');
-    if (window.showNotification) showNotification(disconnectMsg, true);
+    if (window.showNotification) window.showNotification(disconnectMsg, true);
     if (UI.lobbyStatus) {
         UI.lobbyStatus.style.color = '#ef4444';
         UI.lobbyStatus.innerText = disconnectMsg;

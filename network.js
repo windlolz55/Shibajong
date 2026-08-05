@@ -20,6 +20,30 @@ class MahjongNetwork {
         
         this.globalTimer = null;
         this.lastTurnEpoch = -1;
+
+        this.clientWatchdog = null;
+        this._lastHostPing = Date.now();
+        this._isClientDisconnected = false;
+
+        // 全域引用，便於視窗/手機頁面生命週期 (pagehide/beforeunload) 事件觸發清理
+        if (typeof window !== 'undefined') {
+            window.currentMahjongNetwork = this;
+        }
+    }
+
+    handleClientDisconnect(msg = '與房主連線已中斷。') {
+        if (this._isClientDisconnected) return;
+        this._isClientDisconnected = true;
+        if (this.clientWatchdog) {
+            clearInterval(this.clientWatchdog);
+            this.clientWatchdog = null;
+        }
+        if (!sessionStorage.getItem('disconnectMsg')) {
+            sessionStorage.setItem('disconnectMsg', msg);
+        }
+        try { if (this.hostConnection) this.hostConnection.close(); } catch(e) {}
+        try { if (this.peer) this.peer.destroy(); } catch(e) {}
+        location.reload();
     }
 
     getPeerConfig() {
@@ -176,17 +200,18 @@ class MahjongNetwork {
                 });
 
                 this.hostConnection.on('error', (err) => {
-                    cleanupAndReject(err || new Error('與房主連線失敗'));
+                    if (!this.hasJoinedSuccessfully) {
+                        cleanupAndReject(err || new Error('與房主連線失敗'));
+                    } else {
+                        this.handleClientDisconnect('與房主連線已中斷。');
+                    }
                 });
 
                 this.hostConnection.on('close', () => {
                     if (!this.hasJoinedSuccessfully) {
                         cleanupAndReject(new Error('找不到該房間（房主可能已離開或代碼錯誤）'));
                     } else {
-                        if (!sessionStorage.getItem('disconnectMsg')) {
-                            sessionStorage.setItem('disconnectMsg', '與房主連線已中斷。');
-                        }
-                        location.reload();
+                        this.handleClientDisconnect('與房主連線已中斷。');
                     }
                 });
 
@@ -263,13 +288,13 @@ class MahjongNetwork {
                 this.connections.forEach(conn => {
                     if (conn.open) {
                         try { conn.send({ type: 'ping' }); } catch(e) {}
-                        if (conn._lastPong && now - conn._lastPong > 25000) {
+                        if (conn._lastPong && now - conn._lastPong > 30000) {
                             if (conn._handleDisconnect) conn._handleDisconnect();
                         }
                     }
                 });
             }
-        }, 3000);
+        }, 2500);
     }
 
     setupHostConnectionEvents(conn) {
@@ -291,9 +316,36 @@ class MahjongNetwork {
         conn.on('close', handleDisconnect);
         conn.on('error', handleDisconnect);
 
+        // 監聽 WebRTC 底層連線狀態，快速感知客戶端離線
+        const monitorClientPC = () => {
+            const pc = conn.peerConnection;
+            if (pc && !conn._pcMonitored) {
+                conn._pcMonitored = true;
+                pc.addEventListener('iceconnectionstatechange', () => {
+                    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'closed') {
+                        handleDisconnect();
+                    } else if (pc.iceConnectionState === 'disconnected') {
+                        setTimeout(() => {
+                            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                                handleDisconnect();
+                            }
+                        }, 10000);
+                    }
+                });
+            }
+        };
+        if (conn.peerConnection) monitorClientPC();
+        else conn.on('open', monitorClientPC);
+
         conn.on('data', (data) => {
             conn._lastPong = Date.now();
             if (data.type === 'pong') {
+                return;
+            }
+            else if (data.type === 'ping') {
+                if (conn.open) {
+                    try { conn.send({ type: 'pong' }); } catch(e) {}
+                }
                 return;
             }
             else if (data.type === 'leave') {
@@ -380,6 +432,55 @@ class MahjongNetwork {
     }
 
     setupClientConnectionEvents(conn, onJoined, onError) {
+        this._lastHostPing = Date.now();
+        this._isClientDisconnected = false;
+
+        // 啟動客戶端心跳看門狗：若房主被手機系統殺掉或無預警離線，超時後自動觸發斷線提示並返回大廳
+        if (this.clientWatchdog) clearInterval(this.clientWatchdog);
+        this.clientWatchdog = setInterval(() => {
+            if (!this.hasJoinedSuccessfully || this.isHost || this._isClientDisconnected) return;
+            const now = Date.now();
+            const elapsed = now - this._lastHostPing;
+            
+            // 超過 5 秒沒收到任何房主訊息，主動送 ping 探測房主是否存活
+            if (elapsed > 5000 && conn.open) {
+                try { conn.send({ type: 'ping' }); } catch(e) {}
+            }
+            
+            // 超過 30 秒完全無任何房主回應，確認房主已離線
+            if (elapsed > 30000) {
+                console.warn('房主心跳超時（超過30秒未收到回應），判定房主離線');
+                this.handleClientDisconnect('與房主連線已中斷（房主已離線）。');
+            }
+        }, 2000);
+
+        // 監聽 WebRTC 底層連線狀態 (RTCPeerConnection)
+        const monitorPeerConnection = () => {
+            const pc = conn.peerConnection;
+            if (pc && !conn._pcMonitored) {
+                conn._pcMonitored = true;
+                pc.addEventListener('iceconnectionstatechange', () => {
+                    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'closed') {
+                        this.handleClientDisconnect('與房主連線已中斷。');
+                    } else if (pc.iceConnectionState === 'disconnected') {
+                        setTimeout(() => {
+                            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                                this.handleClientDisconnect('與房主連線已中斷。');
+                            }
+                        }, 10000);
+                    }
+                });
+                pc.addEventListener('connectionstatechange', () => {
+                    if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                        this.handleClientDisconnect('與房主連線已中斷。');
+                    }
+                });
+            }
+        };
+
+        if (conn.peerConnection) monitorPeerConnection();
+        else conn.on('open', monitorPeerConnection);
+
         if (typeof window !== 'undefined' && !this._unloadBound) {
             this._unloadBound = true;
 
@@ -399,10 +500,15 @@ class MahjongNetwork {
         }
 
         conn.on('data', (data) => {
+            this._lastHostPing = Date.now();
             if (data.type === 'ping') {
                 if (conn.open) {
                     try { conn.send({ type: 'pong' }); } catch(e) {}
                 }
+                return;
+            }
+            else if (data.type === 'host_left') {
+                this.handleClientDisconnect(data.message || '房主已離開遊戲。');
                 return;
             }
             else if (data.type === 'assign_index') {
@@ -427,10 +533,7 @@ class MahjongNetwork {
                 } else {
                     if (window.showNotification) window.showNotification(data.message, true);
                 }
-                sessionStorage.setItem('disconnectMsg', data.message);
-                setTimeout(() => {
-                    conn.close();
-                }, 300);
+                this.handleClientDisconnect(data.message);
             }
         });
     }
@@ -718,5 +821,25 @@ class MahjongNetwork {
     }
 }
 
-
-
+// 視窗/手機頁面關閉或切換離開時 (beforeunload / pagehide)，主動發送斷線封包並妥善關閉 WebRTC 連線
+if (typeof window !== 'undefined' && !window._globalUnloadRegistered) {
+    window._globalUnloadRegistered = true;
+    const handleGlobalExit = () => {
+        const net = window.currentMahjongNetwork;
+        if (!net) return;
+        if (net.isHost && net.connections) {
+            net.connections.forEach(conn => {
+                if (conn.open) {
+                    try { conn.send({ type: 'host_left', message: '房主已離開遊戲。' }); } catch(e) {}
+                    try { conn.close(); } catch(e) {}
+                }
+            });
+            try { if (net.peer) net.peer.destroy(); } catch(e) {}
+        } else if (!net.isHost && net.hostConnection && net.hostConnection.open) {
+            try { net.hostConnection.send({ type: 'leave' }); } catch(e) {}
+            try { net.hostConnection.close(); } catch(e) {}
+        }
+    };
+    window.addEventListener('pagehide', handleGlobalExit);
+    window.addEventListener('beforeunload', handleGlobalExit);
+}
