@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>喜八路麻</title>
-    <link rel="stylesheet" href="style.css?v=2.98">
+    <link rel="stylesheet" href="style.css?v=2.99">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -143,52 +143,134 @@
             </div>
 
             <!-- 管理員控制區 (左側) -->
-            <div id="admin-panel" style="position: absolute; top: 70px; left: 20px; z-index: 200; display: none; flex-direction: column; gap: 10px;">
-                <select id="cheat-hand-select" style="background:rgba(0,0,0,0.5); color:#10b981; border:1px solid rgba(16,185,129,0.5); padding:8px; border-radius:8px; cursor:pointer; font-weight: bold;">
-                    <option value="none">正常發牌</option>
-                    <optgroup label="門前牌型">
-                        <option value="quan_qiu_ren">全/半求人 (2/1台)</option>
-                    </optgroup>
-                    <optgroup label="海底牌型">
-                        <option value="hai_di">海底撈月/河底撈魚 (1台)</option>
-                    </optgroup>
-                    <optgroup label="刻子與順子">
-                        <option value="wu_an_ke">五暗刻 (8台)</option>
-                        <option value="si_an_ke">四暗刻 (5台)</option>
-                        <option value="san_an_ke">三暗刻 (2台)</option>
-                        <option value="peng_peng_hu">碰碰胡 (4台)</option>
-                        <option value="ping_hu">平胡 (2台)</option>
-                    </optgroup>
-                    <optgroup label="字牌與花牌">
-                        <option value="da_si_xi">大四喜 (16台)</option>
-                        <option value="xiao_si_xi">小四喜 (8台)</option>
-                        <option value="men_feng_ke">門風刻 (1台)</option>
-                        <option value="quan_feng_ke">圈風刻 (1台)</option>
-                        <option value="zheng_hua">正花 (1台)</option>
-                    </optgroup>
-                    <optgroup label="三元牌型">
-                        <option value="da_san_yuan">大三元 (8台)</option>
-                        <option value="xiao_san_yuan">小三元 (4台)</option>
-                        <option value="san_yuan_ke">三元刻 (1台)</option>
-                    </optgroup>
-                    <optgroup label="一色牌型">
-                        <option value="zi_yi_se">字一色 (16台)</option>
-                        <option value="qing_yi_se">清一色 (8台)</option>
-                        <option value="hun_yi_se">混一色 (4台)</option>
-                    </optgroup>
-                    <optgroup label="聽牌相關">
-                        <option value="dan_ting">單聽 (1台)</option>
-                        <option value="tian_ting">天聽 (8台) / 地聽 (4台)</option>
-                    </optgroup>
-                    <optgroup label="行為與狀態牌型">
-                        <option value="men_qing">門清/一摸三/不求人</option>
-                        <option value="gang_shang_kai_hua">槓上開花 (測槓牌)</option>
-                    </optgroup>
-                </select>
-                <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start; max-width: 250px;">
-                    <button id="btn-cheat-apply" style="background:#10b981; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight: bold; width: max-content;">🪄 變牌</button>
-                    <button id="btn-force-draw" style="background:#f59e0b; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight: bold; width: max-content;">🏳️ 流局</button>
-                    <button id="btn-force-win" style="background:#8b5cf6; color:#fff; border:none; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight: bold; width: max-content;">🏆 胡牌</button>
+            <div id="admin-panel">
+                <!-- 面板頂部列 (包含縮小/展開按鈕) -->
+                <div class="admin-panel-header" id="admin-panel-header">
+                    <div class="admin-panel-title">
+                        <span>👑 管理員作弊</span>
+                    </div>
+                    <button id="btn-admin-panel-toggle" class="admin-panel-toggle-btn" title="縮小/展開面板">－</button>
+                </div>
+
+                <div id="admin-panel-body" class="admin-panel-body">
+                    <div class="admin-group">
+                        <!-- 變牌牌型選單 (全寬顯示台型名稱) -->
+                        <select id="cheat-hand-select" class="admin-select-green">
+                            <option value="none">正常發牌 (無變牌)</option>
+                            <optgroup label="門前牌型">
+                                <option value="quan_qiu_ren">全/半求人 (2/1台)</option>
+                            </optgroup>
+                            <optgroup label="海底牌型">
+                                <option value="hai_di">海底撈月/河底撈魚 (1台)</option>
+                            </optgroup>
+                            <optgroup label="刻子與順子">
+                                <option value="wu_an_ke">五暗刻 (8台)</option>
+                                <option value="si_an_ke">四暗刻 (5台)</option>
+                                <option value="san_an_ke">三暗刻 (2台)</option>
+                                <option value="peng_peng_hu">碰碰胡 (4台)</option>
+                                <option value="ping_hu">平胡 (2台)</option>
+                            </optgroup>
+                            <optgroup label="字牌與花牌">
+                                <option value="da_si_xi">大四喜 (16台)</option>
+                                <option value="xiao_si_xi">小四喜 (8台)</option>
+                                <option value="men_feng_ke">門風刻 (1台)</option>
+                                <option value="quan_feng_ke">圈風刻 (1台)</option>
+                                <option value="zheng_hua">正花 (1台)</option>
+                            </optgroup>
+                            <optgroup label="三元牌型">
+                                <option value="da_san_yuan">大三元 (8台)</option>
+                                <option value="xiao_san_yuan">小三元 (4台)</option>
+                                <option value="san_yuan_ke">三元刻 (1台)</option>
+                            </optgroup>
+                            <optgroup label="一色牌型">
+                                <option value="zi_yi_se">字一色 (16台)</option>
+                                <option value="qing_yi_se">清一色 (8台)</option>
+                                <option value="hun_yi_se">混一色 (4台)</option>
+                            </optgroup>
+                            <optgroup label="聽牌相關">
+                                <option value="dan_ting">單聽 (1台)</option>
+                                <option value="tian_ting">天聽 (8台) / 地聽 (4台)</option>
+                            </optgroup>
+                            <optgroup label="行為與狀態牌型">
+                                <option value="men_qing">門清/一摸三/不求人</option>
+                                <option value="gang_shang_kai_hua">槓上開花 (測槓牌)</option>
+                            </optgroup>
+                        </select>
+
+                        <!-- 按鈕直排列表 (完全匹配圖片) -->
+                        <div class="admin-btn-stack">
+                            <button id="btn-cheat-apply" class="admin-btn admin-btn-green">🪄 變牌</button>
+                            <button id="btn-force-draw" class="admin-btn admin-btn-orange">🏳️ 流局</button>
+                            <button id="btn-force-win" class="admin-btn admin-btn-purple">🏆 胡牌</button>
+                            <button id="btn-custom-hand" class="admin-btn admin-btn-blue">🀄 自選手牌</button>
+                        </div>
+                    </div>
+
+                    <!-- 指定下一張摸牌 -->
+                    <div class="admin-group" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
+                        <select id="select-next-draw-target" class="admin-select-blue">
+                            <option value="self" selected>👤 摸牌：我自己 (管理員)</option>
+                            <option value="any">👥 摸牌：下一位 (任何人)</option>
+                        </select>
+                        <select id="select-next-draw" class="admin-select-blue">
+                            <option value="">🎲 正常隨機摸牌</option>
+                            <optgroup label="萬子">
+                                <option value="萬_1">1萬</option>
+                                <option value="萬_2">2萬</option>
+                                <option value="萬_3">3萬</option>
+                                <option value="萬_4">4萬</option>
+                                <option value="萬_5">5萬</option>
+                                <option value="萬_6">6萬</option>
+                                <option value="萬_7">7萬</option>
+                                <option value="萬_8">8萬</option>
+                                <option value="萬_9">9萬</option>
+                            </optgroup>
+                            <optgroup label="筒子">
+                                <option value="筒_1">1筒</option>
+                                <option value="筒_2">2筒</option>
+                                <option value="筒_3">3筒</option>
+                                <option value="筒_4">4筒</option>
+                                <option value="筒_5">5筒</option>
+                                <option value="筒_6">6筒</option>
+                                <option value="筒_7">7筒</option>
+                                <option value="筒_8">8筒</option>
+                                <option value="筒_9">9筒</option>
+                            </optgroup>
+                            <optgroup label="條子">
+                                <option value="條_1">1條</option>
+                                <option value="條_2">2條</option>
+                                <option value="條_3">3條</option>
+                                <option value="條_4">4條</option>
+                                <option value="條_5">5條</option>
+                                <option value="條_6">6條</option>
+                                <option value="條_7">7條</option>
+                                <option value="條_8">8條</option>
+                                <option value="條_9">9條</option>
+                            </optgroup>
+                            <optgroup label="風牌">
+                                <option value="風_東">東風</option>
+                                <option value="風_南">南風</option>
+                                <option value="風_西">西風</option>
+                                <option value="風_北">北風</option>
+                            </optgroup>
+                            <optgroup label="三元牌">
+                                <option value="箭_中">紅中</option>
+                                <option value="箭_發">青發</option>
+                                <option value="箭_白">白板</option>
+                            </optgroup>
+                            <optgroup label="花牌">
+                                <option value="花_春">春</option>
+                                <option value="花_夏">夏</option>
+                                <option value="花_秋">秋</option>
+                                <option value="花_冬">冬</option>
+                                <option value="花_梅">梅</option>
+                                <option value="花_蘭">蘭</option>
+                                <option value="花_竹">竹</option>
+                                <option value="花_菊">菊</option>
+                            </optgroup>
+                        </select>
+                        <button id="btn-set-next-draw" class="admin-btn admin-btn-blue" title="鎖定下張摸牌">🔒 鎖定摸牌</button>
+                    </div>
                 </div>
             </div>
 
@@ -424,9 +506,78 @@
         </div>
     </div>
     
+    <!-- 管理員自選手牌彈窗 -->
+    <div id="custom-hand-modal" class="modal-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.78); backdrop-filter: blur(8px); z-index: 10000; display: none; justify-content: center; align-items: center; padding: 12px;">
+        <div class="custom-hand-container">
+            <div class="custom-hand-header">
+                <div class="custom-hand-title">
+                    <span>🀄 自選手牌編輯器</span>
+                    <span class="custom-hand-tag">管理員測試</span>
+                </div>
+                <button id="btn-close-custom-hand" class="custom-hand-close-btn" title="關閉">✕</button>
+            </div>
+            
+            <div class="custom-hand-body">
+                <!-- 當前選定手牌預覽區 -->
+                <div class="custom-hand-preview-card">
+                    <div class="custom-hand-toolbar">
+                        <div class="custom-hand-count-wrap">
+                            <span class="custom-hand-count-label">已選牌組：</span>
+                            <span id="custom-hand-count" class="custom-hand-count-num">0</span>
+                            <span class="custom-hand-count-max">/ 16 張</span>
+                            <span class="custom-hand-count-hint">(摸牌回合可選 17 張)</span>
+                        </div>
+                        <div class="custom-hand-action-btns">
+                            <button id="btn-custom-load-current" class="custom-hand-tool-btn">📥 讀取目前手牌</button>
+                            <button id="btn-custom-clear" class="custom-hand-tool-btn custom-hand-tool-btn-red">🗑️ 全部清空</button>
+                        </div>
+                    </div>
+                    <div id="custom-hand-preview" class="custom-hand-preview-tiles">
+                        <!-- Selected Tiles will be rendered here. Click to remove -->
+                    </div>
+                    <div style="font-size: 0.72rem; color: #94a3b8; white-space: nowrap;">💡 提示：點擊上方已選的牌可將其移除。下方點擊即可加入手牌。</div>
+                </div>
+
+                <!-- 牌庫選擇區 (Tile Selector Pool) -->
+                <div id="custom-tile-picker" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- 萬子 -->
+                    <div class="custom-picker-group">
+                        <div class="custom-picker-group-title">萬子 (1~9萬)</div>
+                        <div class="tile-picker-row" data-picker-group="萬"></div>
+                    </div>
+                    <!-- 筒子 -->
+                    <div class="custom-picker-group">
+                        <div class="custom-picker-group-title">筒子 (1~9筒)</div>
+                        <div class="tile-picker-row" data-picker-group="筒"></div>
+                    </div>
+                    <!-- 條子 -->
+                    <div class="custom-picker-group">
+                        <div class="custom-picker-group-title">條子 (1~9條)</div>
+                        <div class="tile-picker-row" data-picker-group="條"></div>
+                    </div>
+                    <!-- 字牌 -->
+                    <div class="custom-picker-group">
+                        <div class="custom-picker-group-title">字牌 (東南西北 / 中發白)</div>
+                        <div class="tile-picker-row" data-picker-group="字"></div>
+                    </div>
+                    <!-- 花牌 -->
+                    <div class="custom-picker-group">
+                        <div class="custom-picker-group-title">花牌 (春夏秋冬 / 梅蘭竹菊)</div>
+                        <div class="tile-picker-row" data-picker-group="花"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="custom-hand-footer">
+                <button id="btn-custom-cancel" class="custom-hand-footer-btn custom-hand-cancel-btn">取消</button>
+                <button id="btn-custom-apply" class="custom-hand-footer-btn custom-hand-apply-btn">確認套用手牌</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.98"></script>
-    <script src="network.js?v=2.98"></script>
-    <script src="app.js?v=2.98"></script>
+    <script src="game.js?v=2.99"></script>
+    <script src="network.js?v=2.99"></script>
+    <script src="app.js?v=2.99"></script>
 </body>
 </html>

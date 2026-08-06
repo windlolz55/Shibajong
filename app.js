@@ -1170,13 +1170,246 @@ if (UI.btnForceWin) {
 
 const cheatHandSelect = document.getElementById('cheat-hand-select');
 const btnCheatApply = document.getElementById('btn-cheat-apply');
-if (btnCheatApply && cheatHandSelect) {
-    btnCheatApply.addEventListener('click', () => {
-        if (network && window.isAdmin) {
-            const cheatType = cheatHandSelect.value;
-            network.sendAction('apply_cheat', { type: cheatType });
-            if (window.showNotification) showNotification('已變牌成功！請點擊強制胡牌測試結算。');
+const btnAdminPanelToggle = document.getElementById('btn-admin-panel-toggle');
+const adminPanelHeader = document.getElementById('admin-panel-header');
+const adminPanelEl = document.getElementById('admin-panel');
+
+function toggleAdminPanel(e) {
+    if (e) e.stopPropagation();
+    if (!adminPanelEl) return;
+    const isMin = adminPanelEl.classList.toggle('minimized');
+    if (btnAdminPanelToggle) {
+        btnAdminPanelToggle.textContent = isMin ? '＋' : '－';
+        btnAdminPanelToggle.title = isMin ? '展開面板' : '縮小面板';
+    }
+}
+
+if (btnAdminPanelToggle) {
+    btnAdminPanelToggle.addEventListener('click', toggleAdminPanel);
+}
+if (adminPanelHeader) {
+    adminPanelHeader.addEventListener('click', (e) => {
+        if (adminPanelEl && adminPanelEl.classList.contains('minimized')) {
+            toggleAdminPanel(e);
         }
+    });
+}
+
+function applySelectedCheatHand() {
+    if (network && window.isAdmin && cheatHandSelect) {
+        const cheatType = cheatHandSelect.value;
+        const selectedText = cheatHandSelect.options[cheatHandSelect.selectedIndex].text;
+        network.sendAction('apply_cheat', { type: cheatType });
+
+        if (window.showNotification) {
+            if (cheatType === 'none') {
+                showNotification('已重置為正常牌型');
+            } else {
+                showNotification(`🪄 已變牌為【${selectedText}】！請點擊強制胡牌測試結算。`);
+            }
+        }
+    }
+}
+
+if (cheatHandSelect) {
+    cheatHandSelect.addEventListener('change', applySelectedCheatHand);
+}
+if (btnCheatApply) {
+    btnCheatApply.addEventListener('click', applySelectedCheatHand);
+}
+
+// --- 管理員自選手牌與指定摸牌控制 ---
+function getTileSvgUrl(type, value) {
+    const baseUrl = 'tiles/';
+    if (type === '萬') return `${baseUrl}${(7 + parseInt(value)).toString().padStart(2, '0')}-characters-${value}.svg`;
+    if (type === '筒') return `${baseUrl}${(16 + parseInt(value)).toString().padStart(2, '0')}-circles-${value}.svg`;
+    if (type === '條') return `${baseUrl}${(25 + parseInt(value)).toString().padStart(2, '0')}-bamboos-${value}.svg`;
+    if (type === '風') {
+        const windMap = { '東': '04-east-wind.svg', '南': '05-south-wind.svg', '西': '06-west-wind.svg', '北': '07-north-wind.svg' };
+        return `${baseUrl}${windMap[value] || ''}`;
+    }
+    if (type === '箭') {
+        const dragonMap = { '中': '03-red-dragon.svg', '發': '02-green-dragon.svg', '白': '01-white-dragon.svg' };
+        return `${baseUrl}${dragonMap[value] || ''}`;
+    }
+    if (type === '花') {
+        const flowerMap = { '春': '35-spring.svg', '夏': '36-summer.svg', '秋': '37-autumn.svg', '冬': '38-winter.svg', '梅': '39-plum.svg', '蘭': '40-orchid.svg', '竹': '42-bamboo.svg', '菊': '41-chrysanthemum.svg' };
+        return `${baseUrl}${flowerMap[value] || ''}`;
+    }
+    return '';
+}
+
+let customHandTiles = [];
+
+function initCustomHandEditor() {
+    const pickerGroups = {
+        '萬': [1, 2, 3, 4, 5, 6, 7, 8, 9].map(v => ({ type: '萬', value: v, name: `${v}萬` })),
+        '筒': [1, 2, 3, 4, 5, 6, 7, 8, 9].map(v => ({ type: '筒', value: v, name: `${v}筒` })),
+        '條': [1, 2, 3, 4, 5, 6, 7, 8, 9].map(v => ({ type: '條', value: v, name: `${v}條` })),
+        '字': [
+            { type: '風', value: '東', name: '東風' },
+            { type: '風', value: '南', name: '南風' },
+            { type: '風', value: '西', name: '西風' },
+            { type: '風', value: '北', name: '北風' },
+            { type: '箭', value: '中', name: '紅中' },
+            { type: '箭', value: '發', name: '青發' },
+            { type: '箭', value: '白', name: '白板' }
+        ],
+        '花': ['春', '夏', '秋', '冬', '梅', '蘭', '竹', '菊'].map(v => ({ type: '花', value: v, name: v }))
+    };
+
+    Object.keys(pickerGroups).forEach(groupKey => {
+        const row = document.querySelector(`.tile-picker-row[data-picker-group="${groupKey}"]`);
+        if (!row) return;
+        row.innerHTML = '';
+        pickerGroups[groupKey].forEach(tileInfo => {
+            const btn = document.createElement('button');
+            btn.className = 'tile-picker-btn';
+            btn.type = 'button';
+            btn.title = `加入 ${tileInfo.name}`;
+            const svgUrl = getTileSvgUrl(tileInfo.type, tileInfo.value);
+            btn.innerHTML = `<img src="${svgUrl}" alt="${tileInfo.name}">`;
+            btn.addEventListener('click', () => {
+                if (customHandTiles.length >= 17) {
+                    if (window.showNotification) showNotification('手牌最多選取 17 張！');
+                    return;
+                }
+                customHandTiles.push({
+                    type: tileInfo.type,
+                    value: tileInfo.value,
+                    svgUrl: svgUrl
+                });
+                renderCustomHandPreview();
+            });
+            row.appendChild(btn);
+        });
+    });
+
+    const btnCustomHand = document.getElementById('btn-custom-hand');
+    const modal = document.getElementById('custom-hand-modal');
+    const btnClose = document.getElementById('btn-close-custom-hand');
+    const btnCancel = document.getElementById('btn-custom-cancel');
+    const btnApply = document.getElementById('btn-custom-apply');
+    const btnClear = document.getElementById('btn-custom-clear');
+    const btnLoadCurrent = document.getElementById('btn-custom-load-current');
+
+    const openModal = () => {
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        loadCurrentPlayerHandToCustom();
+        renderCustomHandPreview();
+    };
+
+    const closeModal = () => {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    };
+
+    if (btnCustomHand) btnCustomHand.addEventListener('click', openModal);
+    if (btnClose) btnClose.addEventListener('click', closeModal);
+    if (btnCancel) btnCancel.addEventListener('click', closeModal);
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+    }
+
+    if (btnClear) {
+        btnClear.addEventListener('click', () => {
+            customHandTiles = [];
+            renderCustomHandPreview();
+        });
+    }
+
+    if (btnLoadCurrent) {
+        btnLoadCurrent.addEventListener('click', () => {
+            loadCurrentPlayerHandToCustom();
+            renderCustomHandPreview();
+        });
+    }
+
+    if (btnApply) {
+        btnApply.addEventListener('click', () => {
+            if (!network || !window.isAdmin) return;
+            if (customHandTiles.length === 0) {
+                if (window.showNotification) showNotification('請至少選擇 1 張手牌！');
+                return;
+            }
+            network.sendAction('set_custom_hand', { tiles: customHandTiles });
+            if (window.showNotification) showNotification(`已成功套用自選 ${customHandTiles.length} 張手牌！`);
+            closeModal();
+        });
+    }
+
+    // 指定下一張摸牌事件監聽
+    const selectNextDraw = document.getElementById('select-next-draw');
+    const selectNextDrawTarget = document.getElementById('select-next-draw-target');
+    const btnSetNextDraw = document.getElementById('btn-set-next-draw');
+
+    const handleSetNextDraw = () => {
+        if (!network || !window.isAdmin || !selectNextDraw) return;
+        const val = selectNextDraw.value;
+        const targetVal = selectNextDrawTarget ? selectNextDrawTarget.value : 'self';
+        if (!val) {
+            network.sendAction('set_next_draw', { tile: null, target: targetVal });
+            if (window.showNotification) showNotification('已重置為正常隨機摸牌。');
+        } else {
+            const [type, valueStr] = val.split('_');
+            const tileVal = (type === '萬' || type === '筒' || type === '條') ? parseInt(valueStr) : valueStr;
+            network.sendAction('set_next_draw', { tile: { type, value: tileVal }, target: targetVal });
+            let displayName = `${tileVal}${type === '萬' || type === '筒' || type === '條' ? type : ''}`;
+            if (type === '風') displayName = `${tileVal}風`;
+            if (type === '箭') displayName = tileVal === '中' ? '紅中' : tileVal === '發' ? '青發' : '白板';
+            if (type === '花') displayName = `${tileVal}`;
+            const targetText = (targetVal === 'self') ? '我自己 (管理員)' : '下一位摸牌者 (任何人)';
+            if (window.showNotification) showNotification(`🎯 已鎖定【${targetText}】下張摸牌為：${displayName}！`);
+        }
+    };
+
+    if (btnSetNextDraw) btnSetNextDraw.addEventListener('click', handleSetNextDraw);
+    if (selectNextDraw) selectNextDraw.addEventListener('change', handleSetNextDraw);
+    if (selectNextDrawTarget) selectNextDrawTarget.addEventListener('change', handleSetNextDraw);
+}
+
+function loadCurrentPlayerHandToCustom() {
+    customHandTiles = [];
+    if (!network || !window.currentGameStateObj) return;
+    const myIndex = network.myPlayerIndex >= 0 ? network.myPlayerIndex : 0;
+    const liveHands = window.currentGameStateObj.hands;
+    if (liveHands && liveHands[myIndex]) {
+        customHandTiles = liveHands[myIndex].map(t => ({
+            type: t.type,
+            value: t.value,
+            svgUrl: t.svgUrl || getTileSvgUrl(t.type, t.value)
+        }));
+    }
+}
+
+function renderCustomHandPreview() {
+    const previewContainer = document.getElementById('custom-hand-preview');
+    const countEl = document.getElementById('custom-hand-count');
+    if (countEl) countEl.textContent = customHandTiles.length.toString();
+    if (!previewContainer) return;
+
+    previewContainer.innerHTML = '';
+    if (customHandTiles.length === 0) {
+        previewContainer.innerHTML = '<span style="color:#64748b; font-size:0.8rem;">尚未選擇任何牌，請由下方點擊加入手牌</span>';
+        return;
+    }
+
+    customHandTiles.forEach((tile, index) => {
+        const tileDiv = document.createElement('div');
+        tileDiv.className = 'custom-selected-tile';
+        const svgUrl = tile.svgUrl || getTileSvgUrl(tile.type, tile.value);
+        tileDiv.innerHTML = `<img src="${svgUrl}" alt="${tile.value}">`;
+        tileDiv.title = `點擊移除這張牌`;
+        tileDiv.addEventListener('click', () => {
+            customHandTiles.splice(index, 1);
+            renderCustomHandPreview();
+        });
+        previewContainer.appendChild(tileDiv);
     });
 }
 
@@ -1240,6 +1473,22 @@ function updateGameState(state, myIndex) {
     }
     if (state.gameLength && !network.isHost) {
         document.getElementById('game-length-select').value = state.gameLength;
+    }
+    
+    // 更新指定下張摸牌狀態
+    const nextDrawStatusEl = document.getElementById('next-draw-status');
+    if (nextDrawStatusEl) {
+        if (state.riggedNextDraw) {
+            const t = state.riggedNextDraw;
+            let displayName = `${t.value}${t.type === '萬' || t.type === '筒' || t.type === '條' ? t.type : ''}`;
+            if (t.type === '風') displayName = `${t.value}風`;
+            if (t.type === '箭') displayName = t.value === '中' ? '紅中' : t.value === '發' ? '青發' : '白板';
+            if (t.type === '花') displayName = `${t.value}`;
+            const targetText = (t.targetPlayerIndex === -1) ? '任何人' : (t.targetPlayerIndex === myIndex ? '我自己' : `玩家 ${t.targetPlayerIndex + 1}`);
+            nextDrawStatusEl.innerHTML = `🎯 鎖定摸牌：<strong style="color:#facc15;">${displayName}</strong> <span style="font-size:0.7rem; color:#38bdf8;">(${targetText})</span>`;
+        } else {
+            nextDrawStatusEl.textContent = '當前摸牌：正常隨機';
+        }
     }
     
     // Update Round Info Text (e.g. 東風東局)
@@ -2161,4 +2410,8 @@ document.addEventListener('mouseover', function(e) {
 
 // Pre-wake Render Server on page load
 fetch('https://shibajong.onrender.com').catch(e => {});
+
+// 初始化自選手牌編輯器
+initCustomHandEditor();
+
 

@@ -1270,5 +1270,606 @@ button#btn-close-chat:hover,
     }
 }
 
+/* ==========================================================
+   管理員自選手牌選擇器與指定摸牌 UI
+   ========================================================== */
+.tile-picker-btn {
+    background: #f8fafc;
+    border: 1px solid #94a3b8;
+    border-radius: 6px;
+    padding: 2px;
+    width: 36px;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+    user-select: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+.tile-picker-btn:hover {
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 6px 14px rgba(56, 189, 248, 0.45);
+    border-color: #38bdf8;
+    z-index: 2;
+}
+.tile-picker-btn:active {
+    transform: scale(0.95);
+}
+.tile-picker-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
 
+.custom-selected-tile {
+    background: #ffffff;
+    border: 2px solid #38bdf8;
+    border-radius: 6px;
+    padding: 2px;
+    width: 34px;
+    height: 46px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    animation: tilePopIn 0.15s ease-out;
+}
+.custom-selected-tile:hover {
+    transform: scale(1.12);
+    border-color: #ef4444;
+}
+.custom-selected-tile:hover::after {
+    content: '✕';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+.custom-selected-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
 
+@keyframes tilePopIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- 管理員控制面板樣式 (經典圖形版) --- */
+#admin-panel {
+    position: absolute;
+    top: 65px;
+    left: 12px;
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    width: 220px;
+    background: rgba(8, 20, 16, 0.94);
+    padding: 7px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box;
+    transition: width 0.2s ease, padding 0.2s ease;
+}
+
+#admin-panel.minimized {
+    width: auto;
+    min-width: 0;
+    padding: 5px 10px;
+    background: rgba(8, 20, 16, 0.88);
+    border-radius: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.admin-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    user-select: none;
+    padding-bottom: 2px;
+}
+
+#admin-panel.minimized .admin-panel-header {
+    padding-bottom: 0;
+    gap: 6px;
+}
+
+.admin-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    font-weight: bold;
+    color: #10b981;
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+    white-space: nowrap;
+}
+
+.admin-panel-toggle-btn {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.admin-panel-toggle-btn:hover {
+    background: rgba(16, 185, 129, 0.35);
+    color: #fff;
+    border-color: #10b981;
+}
+
+.admin-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+#admin-panel.minimized .admin-panel-body {
+    display: none;
+}
+
+.admin-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.admin-select-green {
+    width: 100%;
+    background: #041c14;
+    color: #10b981;
+    border: 1.5px solid #10b981;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: bold;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.admin-select-green option,
+.admin-select-green optgroup {
+    background: #0f172a;
+    color: #f1f5f9;
+    font-weight: normal;
+}
+
+.admin-select-blue {
+    width: 100%;
+    background: #082132;
+    color: #38bdf8;
+    border: 1.5px solid #38bdf8;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.84rem;
+    font-weight: bold;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.admin-select-blue option,
+.admin-select-blue optgroup {
+    background: #0f172a;
+    color: #f1f5f9;
+    font-weight: normal;
+}
+
+.admin-btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.admin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 0.84rem;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1.2;
+    transition: transform 0.1s ease, filter 0.15s ease;
+    user-select: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+.admin-btn:hover {
+    filter: brightness(1.12);
+}
+
+.admin-btn:active {
+    transform: scale(0.96);
+}
+
+.admin-btn-green {
+    background: #10b981;
+}
+
+.admin-btn-orange {
+    background: #f59e0b;
+}
+
+.admin-btn-purple {
+    background: #a855f7;
+}
+
+.admin-btn-blue {
+    background: #0284c7;
+}
+
+@media (max-width: 768px) {
+    #admin-panel {
+        top: 50px;
+        left: 6px;
+        max-width: 210px;
+        max-height: 85vh;
+        overflow-y: auto;
+        padding: 6px 8px;
+    }
+    #admin-panel.minimized {
+        top: 50px;
+        left: 6px;
+        padding: 4px 8px;
+    }
+}
+
+/* --- 自選手牌編輯器彈窗樣式 --- */
+.custom-hand-container {
+    background: rgba(15, 23, 42, 0.98);
+    border: 1.5px solid #38bdf8;
+    border-radius: 14px;
+    width: min(94vw, 700px);
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.85);
+    box-sizing: border-box;
+}
+
+.custom-hand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.custom-hand-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 1.05rem;
+    color: #38bdf8;
+    white-space: nowrap;
+}
+
+.custom-hand-tag {
+    font-size: 0.72rem;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    white-space: nowrap;
+}
+
+.custom-hand-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #cbd5e1;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    margin-left: auto;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.custom-hand-close-btn:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: #fff;
+    transform: scale(1.08);
+}
+
+.custom-hand-body {
+    padding: 12px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    box-sizing: border-box;
+}
+
+.custom-hand-preview-card {
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.custom-hand-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.custom-hand-count-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 0.88rem;
+    font-weight: bold;
+    color: #facc15;
+    white-space: nowrap;
+}
+
+.custom-hand-count-num {
+    color: #38bdf8;
+    font-size: 1.15rem;
+}
+
+.custom-hand-count-max {
+    color: #e2e8f0;
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.custom-hand-count-hint {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.custom-hand-action-btns {
+    display: flex;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.custom-hand-tool-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f1f5f9;
+    font-size: 0.76rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.custom-hand-tool-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+
+.custom-hand-tool-btn-red:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #f87171;
+}
+
+.custom-hand-preview-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 52px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px dashed rgba(56, 189, 248, 0.3);
+    box-sizing: border-box;
+}
+
+.custom-selected-tile {
+    width: 34px;
+    height: 46px;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.custom-selected-tile:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.6);
+    border: 1.5px solid #ef4444;
+}
+
+.custom-selected-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.custom-picker-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.custom-picker-group-title {
+    font-size: 0.78rem;
+    color: #93c5fd;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.tile-picker-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+}
+
+.tile-picker-btn {
+    width: 34px;
+    height: 46px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 2px;
+    box-sizing: border-box;
+    transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.tile-picker-btn:hover {
+    transform: translateY(-3px);
+    border-color: #38bdf8;
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.6);
+}
+
+.tile-picker-btn:active {
+    transform: scale(0.92);
+}
+
+.tile-picker-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.custom-hand-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 10px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+}
+
+.custom-hand-footer-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.custom-hand-cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+}
+
+.custom-hand-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.custom-hand-apply-btn {
+    background: #10b981;
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+}
+
+.custom-hand-apply-btn:hover {
+    background: #059669;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.6);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+    .custom-hand-container {
+        width: 96vw;
+        max-height: 92vh;
+    }
+    .custom-selected-tile,
+    .tile-picker-btn {
+        width: 30px;
+        height: 42px;
+    }
+    .custom-hand-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+}

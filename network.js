@@ -627,6 +627,13 @@ class MahjongNetwork {
         } else if (action === 'apply_cheat') {
             this.game.applyCheatHand(playerIndex, payload.type);
             this.broadcastGameState();
+        } else if (action === 'set_custom_hand') {
+            this.game.setCustomHand(playerIndex, payload.tiles);
+            this.broadcastGameState();
+        } else if (action === 'set_next_draw') {
+            const target = (payload && payload.target === 'any') ? -1 : playerIndex;
+            this.game.setRiggedNextDraw(payload ? payload.tile : null, target);
+            this.broadcastGameState();
         } else if (action === 'emote') {
             this.broadcast({ type: 'emote_event', playerIndex: playerIndex, text: payload.text });
             if (window.showEmote) window.showEmote(playerIndex, payload.text, true);

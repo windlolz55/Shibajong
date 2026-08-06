@@ -56,6 +56,7 @@ class MahjongGame {
         this.dealerCount = 0; // 連莊次數 (optional, nice to have for UI)
         this.isMatchOver = false;
         this.botDifficulty = 'normal';
+        this.riggedNextDraw = null; // 管理員指定下一張摸牌 { type, value }
         
         this.generateDeck();
     }
@@ -187,7 +188,20 @@ class MahjongGame {
             return null;
         }
         this.isDrawnTurn = true;
-        this.hands[playerIndex].push(this.deck.pop());
+        let drawnTile;
+        if (this.riggedNextDraw && (this.riggedNextDraw.targetPlayerIndex === -1 || this.riggedNextDraw.targetPlayerIndex === playerIndex)) {
+            const { type, value } = this.riggedNextDraw;
+            drawnTile = {
+                id: `RIGGED_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                type: type,
+                value: value,
+                svgUrl: this.getSvgUrl(type, value)
+            };
+            this.riggedNextDraw = null; // 一次性消耗
+        } else {
+            drawnTile = this.deck.pop();
+        }
+        this.hands[playerIndex].push(drawnTile);
         this.processFlowers(playerIndex); // 補花
         return this.hands[playerIndex][this.hands[playerIndex].length - 1];
     }
@@ -966,7 +980,8 @@ class MahjongGame {
             initialScore: this.initialScore,
             roundWind: this.roundWind,
             isMatchOver: this.isMatchOver,
-            dealerCount: this.dealerCount
+            dealerCount: this.dealerCount,
+            riggedNextDraw: this.riggedNextDraw
         };
     }
 
@@ -1395,6 +1410,31 @@ class MahjongGame {
                 this.hands[playerIndex].push(this.deck.pop());
                 this.processFlowers(playerIndex);
             }
+        }
+    }
+
+    setCustomHand(playerIndex, tiles) {
+        if (!Array.isArray(tiles) || tiles.length === 0) return;
+        this.melds[playerIndex] = [];
+        this.hands[playerIndex] = tiles.map(t => {
+            const val = (t.type === TILE_TYPES.CHAR || t.type === TILE_TYPES.DOT || t.type === TILE_TYPES.BAM) ? parseInt(t.value) : t.value;
+            return {
+                id: t.id || `CUSTOM_${Math.random().toString(36).substring(7)}`,
+                type: t.type,
+                value: val,
+                svgUrl: this.getSvgUrl(t.type, val)
+            };
+        });
+        this.processFlowers(playerIndex);
+        this.sortHand(this.hands[playerIndex]);
+    }
+
+    setRiggedNextDraw(tile, targetPlayerIndex = -1) {
+        if (tile && tile.type && tile.value !== undefined) {
+            const val = (tile.type === TILE_TYPES.CHAR || tile.type === TILE_TYPES.DOT || tile.type === TILE_TYPES.BAM) ? parseInt(tile.value) : tile.value;
+            this.riggedNextDraw = { type: tile.type, value: val, targetPlayerIndex: targetPlayerIndex };
+        } else {
+            this.riggedNextDraw = null;
         }
     }
 
