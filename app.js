@@ -84,6 +84,7 @@ const UI = {
     turnTimer: document.getElementById('turn-timer'),
     discardPool: document.getElementById('discard-pool'),
     actionBar: document.getElementById('action-bar'),
+    actionBarHandle: document.getElementById('action-bar-handle'),
     actionButtons: document.querySelector('.action-buttons'),
     chowOptionsContainer: document.getElementById('chow-options'),
     settlementContent: document.getElementById('settlement-content'),
@@ -230,6 +231,18 @@ function toggleMute() {
     } else {
         const restoreVol = previousVolume > 0 ? Math.round(previousVolume * 100) : 100;
         setGameVolume(restoreVol);
+    }
+}
+
+function formatTileDisplayName(tile) {
+    if (!tile) return '';
+    const digitToZh = {1:'一', 2:'二', 3:'三', 4:'四', 5:'五', 6:'六', 7:'七', 8:'八', 9:'九'};
+    if (tile.type === '萬' || tile.type === '筒' || tile.type === '條') {
+        return (digitToZh[tile.value] || tile.value) + tile.type;
+    } else {
+        let name = tile.value;
+        if (name === '東' || name === '南' || name === '西' || name === '北') name += '風';
+        return name;
     }
 }
 
@@ -542,6 +555,10 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
             playAudioFile('Wei & Meng.mp3');
         } else if (text === '對不起 我沒打好' || text === '對不起我沒打好') {
             playAudioFile('sorry.mp3');
+        } else if (text === '太爽不算 再來一把' || text === '太爽不算再來一把') {
+            playAudioFile('On cloud nine1.mp3');
+        } else if (text === '贏了沒爽 再來一把' || text === '贏了沒爽再來一把') {
+            playAudioFile('On cloud nine2.mp3');
         } else if (window.speechSynthesis) {
             // 沒有專屬 mp3 音效的快捷語音使用 TTS 報讀
             window.speechSynthesis.cancel();
@@ -1184,6 +1201,9 @@ function startGameUI() {
         
         if (network.isHost) {
             UI.gameSpeedSelect.value = network.botSpeed.toString();
+            if (network.game) {
+                network.game.botDifficulty = UI.botDifficulty.value;
+            }
             if (gameLengthSelect && network.game) {
                 gameLengthSelect.value = network.game.gameLength;
             }
@@ -1408,6 +1428,7 @@ function updateGameState(state, myIndex) {
         
         // 如果是我，且可以自摸、自摸槓或宣告聽牌，顯示中央面板
         if (isMyTurnAndCanSelfDraw || mySelfKongOptions.length > 0 || canDeclareTenpai) {
+            if (window.resetActionBarState) window.resetActionBarState();
             UI.actionBar.classList.remove('hidden');
             UI.actionButtons.innerHTML = '';
             UI.chowOptionsContainer.innerHTML = '';
@@ -1430,13 +1451,18 @@ function updateGameState(state, myIndex) {
                 });
             }
 
-            mySelfKongOptions.forEach(kongOpt => {
-                const btnKong = addActionButton(kongOpt.type === 'ANKONG' ? '暗槓' : '加槓', 'btn-kong', 'KONG', false);
+            if (mySelfKongOptions.length > 0) {
+                const hasAnKong = mySelfKongOptions.some(o => o.type === 'ANKONG');
+                const hasJiaKong = mySelfKongOptions.some(o => o.type === 'JIAKONG');
+                let kongBtnText = '槓';
+                if (hasAnKong && !hasJiaKong) kongBtnText = '暗槓';
+                else if (!hasAnKong && hasJiaKong) kongBtnText = '加槓';
+                
+                const btnKong = addActionButton(kongBtnText, 'btn-kong', 'KONG', false);
                 btnKong.addEventListener('click', () => {
-                    UI.actionBar.classList.add('hidden');
-                    network.sendAction('self_kong', kongOpt);
+                    showSelfKongOptions(mySelfKongOptions);
                 });
-            });
+            }
             
             const btnSkip = addActionButton('跳過', 'btn-skip', 'SKIP', false);
             btnSkip.addEventListener('click', () => {
@@ -1897,6 +1923,7 @@ function handlePendingActions(state, myIndex) {
     const myAction = pendingActions.find(p => p.playerIndex === myIndex);
     
     if (myAction && !myAction.responded) {
+        if (window.resetActionBarState) window.resetActionBarState();
         UI.actionBar.classList.remove('hidden');
         UI.actionButtons.innerHTML = '';
         UI.chowOptionsContainer.innerHTML = '';
@@ -1979,6 +2006,39 @@ function showChowOptions(options) {
     UI.chowOptionsContainer.appendChild(cancelBtn);
 }
 
+function showSelfKongOptions(options) {
+    UI.actionButtons.innerHTML = ''; 
+    UI.chowOptionsContainer.innerHTML = '';
+    UI.chowOptionsContainer.classList.remove('hidden');
+    
+    options.forEach(opt => {
+        const optDiv = document.createElement('div');
+        optDiv.className = 'chow-option';
+        const label = opt.type === 'ANKONG' ? '暗槓' : '加槓';
+        const tileName = formatTileDisplayName(opt.tile);
+        optDiv.title = `${label} ${tileName}`;
+        
+        for (let i = 0; i < 4; i++) {
+            const tileDiv = document.createElement('div');
+            tileDiv.className = 'tile meld-tile';
+            tileDiv.innerHTML = getTileHTML(opt.tile);
+            optDiv.appendChild(tileDiv);
+        }
+        
+        optDiv.addEventListener('click', () => {
+            UI.actionBar.classList.add('hidden');
+            network.sendAction('self_kong', opt);
+        });
+        UI.chowOptionsContainer.appendChild(optDiv);
+    });
+
+    const cancelBtn = addActionButton('取消', 'btn-skip', 'SKIP', false);
+    cancelBtn.addEventListener('click', () => {
+        UI.actionBar.classList.add('hidden');
+    });
+    UI.chowOptionsContainer.appendChild(cancelBtn);
+}
+
 // 檢查是否有斷線/錯誤訊息
 const disconnectMsg = sessionStorage.getItem('disconnectMsg');
 if (disconnectMsg) {
@@ -2017,6 +2077,87 @@ document.addEventListener('mouseover', function(e) {
     }
 });
 
+
+// --- Action Bar Draggable Controls ---
+(function initDraggableActionBar() {
+    const bar = document.getElementById('action-bar');
+    const handle = document.getElementById('action-bar-handle');
+    if (!bar) return;
+
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let initialLeft = 0, initialTop = 0;
+    let hasCustomPos = false;
+
+    // Pointer Drag Handler (Unified desktop mouse & mobile touch)
+    function onPointerDown(e) {
+        if (e.target.closest('button') || e.target.closest('.chow-option')) return;
+        
+        isDragging = true;
+        (handle || bar).setPointerCapture(e.pointerId);
+        
+        const rect = bar.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        // Switch from centered transform to absolute pixel position
+        bar.style.transform = 'none';
+        bar.style.left = `${initialLeft}px`;
+        bar.style.top = `${initialTop}px`;
+        bar.classList.add('is-dragging');
+        hasCustomPos = true;
+    }
+
+    if (handle) {
+        handle.addEventListener('pointerdown', onPointerDown);
+    }
+    bar.addEventListener('pointerdown', onPointerDown);
+
+    function onPointerMove(e) {
+        if (!isDragging) return;
+        
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        
+        let newLeft = initialLeft + dx;
+        let newTop = initialTop + dy;
+        
+        // Clamp boundaries within viewport
+        const rect = bar.getBoundingClientRect();
+        const maxLeft = window.innerWidth - rect.width - 5;
+        const maxTop = window.innerHeight - rect.height - 5;
+        
+        newLeft = Math.max(5, Math.min(newLeft, maxLeft));
+        newTop = Math.max(5, Math.min(newTop, maxTop));
+        
+        bar.style.left = `${newLeft}px`;
+        bar.style.top = `${newTop}px`;
+    }
+
+    function endDrag(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        try {
+            (handle || bar).releasePointerCapture(e.pointerId);
+        } catch (_) {}
+        bar.classList.remove('is-dragging');
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+
+    // Reset function called on new action turn
+    window.resetActionBarState = function() {
+        if (!hasCustomPos) {
+            bar.style.left = '50%';
+            bar.style.top = '50%';
+            bar.style.transform = 'translate(-50%, -50%)';
+        }
+    };
+})();
 
 // Pre-wake Render Server on page load
 fetch('https://shibajong.onrender.com').catch(e => {});

@@ -44,6 +44,7 @@ class MahjongGame {
         this.turnEpoch = 0;
         this.actionEvent = null;
         this.isKongReplacement = false;
+        this.isDrawnTurn = true; // 記錄當前回合是否為自己摸牌回合 (碰/吃後的出牌回合不可暗槓、加槓或自摸)
         
         // 宣告聽牌狀態
         this.tenpaiStatus = [false, false, false, false];
@@ -54,6 +55,7 @@ class MahjongGame {
         this.initialDealer = 0; // Host is usually 0
         this.dealerCount = 0; // 連莊次數 (optional, nice to have for UI)
         this.isMatchOver = false;
+        this.botDifficulty = 'normal';
         
         this.generateDeck();
     }
@@ -146,6 +148,7 @@ class MahjongGame {
             this.sortHand(this.hands[p]);
         }
         this.gameState = 'PLAYING';
+        this.isDrawnTurn = true;
     }
 
     processFlowers(playerIndex) {
@@ -183,13 +186,14 @@ class MahjongGame {
             this.handleDrawGame(); // 流局
             return null;
         }
+        this.isDrawnTurn = true;
         this.hands[playerIndex].push(this.deck.pop());
         this.processFlowers(playerIndex); // 補花
         return this.hands[playerIndex][this.hands[playerIndex].length - 1];
     }
 
     checkSelfDraw(playerIndex) {
-        return this.gameState === 'PLAYING' && this.currentTurn === playerIndex && this.checkCanHu(playerIndex);
+        return this.gameState === 'PLAYING' && this.isDrawnTurn && this.currentTurn === playerIndex && this.checkCanHu(playerIndex);
     }
 
     checkTianDiTingEligibility() {
@@ -235,6 +239,7 @@ class MahjongGame {
         const tileIndex = hand.findIndex(t => t.id === tileId);
         
         if (tileIndex !== -1) {
+            this.isDrawnTurn = false;
             this.isKongReplacement = false; // 清除槓上開花狀態
             const tile = hand.splice(tileIndex, 1)[0];
             this.discardPool.push(tile);
@@ -436,6 +441,7 @@ class MahjongGame {
     }
 
     executePong(playerIndex, tile) {
+        this.isDrawnTurn = false; // 碰牌後的出牌回合不可暗槓、加槓或自摸
         let hand = this.hands[playerIndex];
         let matches = hand.filter(t => t.type === tile.type && t.value === tile.value);
         this.hands[playerIndex] = hand.filter(t => !(t.id === matches[0].id || t.id === matches[1].id));
@@ -454,6 +460,7 @@ class MahjongGame {
     }
 
     executeSelfKong(playerIndex, kongType, tile) {
+        if (!this.isDrawnTurn || this.gameState !== 'PLAYING' || this.currentTurn !== playerIndex) return;
         let hand = this.hands[playerIndex];
         let matches = hand.filter(t => t.type === tile.type && t.value === tile.value);
         
@@ -474,6 +481,7 @@ class MahjongGame {
         this.drawTile(playerIndex);
     }
     executeChow(playerIndex, tile, payloadTiles) {
+        this.isDrawnTurn = false; // 吃牌後的出牌回合不可暗槓、加槓或自摸
         let hand = this.hands[playerIndex];
         this.hands[playerIndex] = hand.filter(t => !(t.id === payloadTiles[0].id || t.id === payloadTiles[1].id));
         // 台灣麻將規則：吃牌時，吃進來的牌置於副露組正中間，自己手牌的兩張置於左右兩側
@@ -873,6 +881,7 @@ class MahjongGame {
     }
 
     handleSelfDraw(playerIndex) {
+        if (!this.isDrawnTurn || this.gameState !== 'PLAYING' || this.currentTurn !== playerIndex) return;
         if (this.checkSelfDraw(playerIndex)) {
             this.handleWinGame(playerIndex, playerIndex);
         }
@@ -912,7 +921,7 @@ class MahjongGame {
         let selfDrawFlags = [false, false, false, false];
         let selfKongOptions = [[], [], [], []];
         let waitTilesList = [[], [], [], []];
-        if (this.gameState === 'PLAYING') {
+        if (this.gameState === 'PLAYING' && this.isDrawnTurn) {
             selfDrawFlags[this.currentTurn] = this.checkCanHu(this.currentTurn);
             selfKongOptions[this.currentTurn] = this.getSelfKongOptions(this.currentTurn);
         }

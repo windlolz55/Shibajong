@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>喜八路麻</title>
-    <link rel="stylesheet" href="style.css?v=2.88">
+    <link rel="stylesheet" href="style.css?v=2.98">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -70,7 +70,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v2.88<br>made by Kittenz
+                        當前版本：v2.98<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -220,8 +220,20 @@
             </div>
             
             <div id="action-bar" class="action-bar hidden">
-                <div class="action-buttons"></div>
-                <div id="chow-options" class="chow-options hidden"></div>
+                <div id="action-bar-handle" class="action-bar-handle" title="按住拖曳移動選單">
+                    <div class="drag-grip">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="action-bar-content">
+                    <div class="action-buttons"></div>
+                    <div id="chow-options" class="chow-options hidden"></div>
+                </div>
             </div>
 
             <div class="game-board">
@@ -314,13 +326,15 @@
                         <button class="btn-emote-option" data-text="沒救 繼續沉淪">沒救 繼續沉淪</button>
                         <button class="btn-emote-option" data-text="這把穩了">這把穩了</button>
                         <button class="btn-emote-option" data-text="度！">度！</button>
+                        <button class="btn-emote-option" data-text="dllm">dllm</button>
                         <button id="btn-emote-next" class="btn-emote-nav">下一頁 ➡</button>
                     </div>
                     <div id="emote-page-2" style="display: none; flex-direction: column; gap: 8px;">
-                        <button class="btn-emote-option" data-text="dllm">dllm</button>
                         <button class="btn-emote-option" data-text="陽光彩虹小白馬">陽光彩虹小白馬</button>
                         <button class="btn-emote-option" data-text="葳葳孟孟">葳葳孟孟</button>
                         <button class="btn-emote-option" data-text="對不起 我沒打好">對不起 我沒打好</button>
+                        <button class="btn-emote-option" data-text="太爽不算 再來一把">太爽不算 再來一把</button>
+                        <button class="btn-emote-option" data-text="贏了沒爽 再來一把">贏了沒爽 再來一把</button>
                         <button id="btn-emote-prev" class="btn-emote-nav">⬅ 上一頁</button>
                     </div>
                 </div>
@@ -411,8 +425,8 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=2.88"></script>
-    <script src="network.js?v=2.88"></script>
-    <script src="app.js?v=2.88"></script>
+    <script src="game.js?v=2.98"></script>
+    <script src="network.js?v=2.98"></script>
+    <script src="app.js?v=2.98"></script>
 </body>
 </html>
