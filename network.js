@@ -54,33 +54,40 @@ class MahjongNetwork {
             secure: true,
             config: {
                 'iceServers': [
+                    // Google STUN 伺服器節點群
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
                     { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' },
+                    // Cloudflare STUN 伺服器 (全球 Anycast 高速節點，支援 IPv4 / IPv6)
+                    { urls: 'stun:stun.cloudflare.com:3478' },
+                    // 其他高品質 STUN 備援節點
+                    { urls: 'stun:stun.nextcloud.com:443' },
+                    { urls: 'stun:stun.nextcloud.com:3478' },
+                    { urls: 'stun:stun.syncthing.net:3478' },
+                    { urls: 'stun:stun.voip.blackberry.com:3478' },
+                    // Shibajong 專屬專用 TURN 中繼轉發伺服器 (Metered)
+                    { urls: 'stun:stun.relay.metered.ca:80' },
                     {
-                        urls: 'turn:openrelay.metered.ca:80',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        urls: 'turn:global.relay.metered.ca:80',
+                        username: '3a7eaf93d51404bb7968b721',
+                        credential: 'NyZ8F/6u3VF0pChG'
                     },
                     {
-                        urls: 'turn:openrelay.metered.ca:443',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+                        username: '3a7eaf93d51404bb7968b721',
+                        credential: 'NyZ8F/6u3VF0pChG'
                     },
                     {
-                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        urls: 'turn:global.relay.metered.ca:443',
+                        username: '3a7eaf93d51404bb7968b721',
+                        credential: 'NyZ8F/6u3VF0pChG'
                     },
                     {
-                        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                    {
-                        urls: 'turns:openrelay.metered.ca:5349',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+                        username: '3a7eaf93d51404bb7968b721',
+                        credential: 'NyZ8F/6u3VF0pChG'
                     }
                 ],
                 'iceCandidatePoolSize': 10
@@ -462,6 +469,7 @@ class MahjongNetwork {
             if (pc && !conn._pcMonitored) {
                 conn._pcMonitored = true;
                 pc.addEventListener('iceconnectionstatechange', () => {
+                    if (!this.hasJoinedSuccessfully) return;
                     if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'closed') {
                         this.handleClientDisconnect('與房主連線已中斷。');
                     } else if (pc.iceConnectionState === 'disconnected') {
@@ -473,6 +481,7 @@ class MahjongNetwork {
                     }
                 });
                 pc.addEventListener('connectionstatechange', () => {
+                    if (!this.hasJoinedSuccessfully) return;
                     if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
                         this.handleClientDisconnect('與房主連線已中斷。');
                     }
