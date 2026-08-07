@@ -559,6 +559,8 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
             playAudioFile('On cloud nine1.mp3');
         } else if (text === '贏了沒爽 再來一把' || text === '贏了沒爽再來一把') {
             playAudioFile('On cloud nine2.mp3');
+        } else if (text === '沒救 繼續沉淪' || text === '沒救繼續沉淪') {
+            playAudioFile('Hopeless.mp3');
         } else if (window.speechSynthesis) {
             // 沒有專屬 mp3 音效的快捷語音使用 TTS 報讀
             window.speechSynthesis.cancel();
