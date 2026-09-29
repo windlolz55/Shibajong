@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>產生 PWA 圖示</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: sans-serif; background: #333; color: white; padding: 20px; }
+        canvas { border: 1px solid white; margin: 10px; background: transparent; }
+    </style>
+</head>
+<body>
+    <!-- 強制瀏覽器下載字體 -->
+    <div style="font-family: 'Ma Shan Zheng', cursive; visibility: hidden; position: absolute;">麻</div>
+    
+    <h2>正在載入字體並產生圖示...</h2>
+    <p>如果沒有自動下載，請點擊下方畫布右鍵「另存圖片」。產生完畢後將圖片命名為 icon-192.png 與 icon-512.png 並放在資料夾中即可。</p>
+    
+    <div id="canvases"></div>
+
+    <script>
+        // 確保字體真正被下載與載入完成
+        document.fonts.load('16px "Ma Shan Zheng"').then(function() {
+            // 延遲 500ms 確保 Canvas 引擎更新
+            setTimeout(() => {
+                generateIcon(192);
+                generateIcon(512);
+                document.querySelector('h2').innerText = "圖示產生完畢！已經觸發下載。";
+            }, 500);
+        });
+
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // 1. 畫紅色底框 (對應 #dc2626)
+            ctx.fillStyle = '#dc2626';
+            
+            // 處理圓角和黑邊
+            const borderWidth = size * 0.05; // 根據尺寸調整邊框粗細
+            const radius = size * 0.15;
+            
+            // 繪製圓角矩形底色
+            ctx.beginPath();
+            ctx.roundRect(borderWidth, borderWidth, size - borderWidth*2, size - borderWidth*2, radius);
+            ctx.fill();
+
+            // 2. 畫黑色粗邊框 (對應 border: 3px solid #111)
+            ctx.lineWidth = borderWidth;
+            ctx.strokeStyle = '#111111';
+            ctx.stroke();
+
+            // 3. 寫上「麻」字 (對應字體 Ma Shan Zheng)
+            ctx.fillStyle = '#111111';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // 依據畫布大小調整字體大小
+            const fontSize = size * 0.65; 
+            ctx.font = `${fontSize}px "Ma Shan Zheng", cursive`;
+            
+            // 將字畫在正中心
+            ctx.fillText('麻', size / 2, size / 2 + size * 0.05);
+
+            document.getElementById('canvases').appendChild(canvas);
+
+            // 自動觸發下載
+            const link = document.createElement('a');
+            link.download = `icon-${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>
