@@ -2,12 +2,31 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>喜八路麻</title>
+    <!-- PWA 標籤 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="喜八路麻">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
     <link rel="stylesheet" href="style.css?v=2.99">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    
+    <!-- 註冊 Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((registration) => console.log('ServiceWorker 註冊成功:', registration.scope))
+                    .catch((error) => console.log('ServiceWorker 註冊失敗:', error));
+            });
+        }
+    </script>
 </head>
 <body>
     <div id="notification-container" class="notification-container"></div>
@@ -576,8 +595,9 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="game.js?v=3.00"></script>
-    <script src="network.js?v=3.00"></script>
-    <script src="app.js?v=3.00"></script>
+    <script src="audio.js?v=3.01"></script>
+    <script src="game.js?v=3.01"></script>
+    <script src="network.js?v=3.01"></script>
+    <script src="app.js?v=3.01"></script>
 </body>
 </html>

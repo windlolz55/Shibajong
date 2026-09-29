@@ -538,37 +538,11 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
         bubble.style.transform = 'translateY(0)'; // override show transform
     }
     
-    // 只有在點選「快捷語音」按鈕時才播放專屬音效或 TTS 語音朗讀 (一般聊天室打字不會發出任何聲音)
-    if (isEmote && typeof isMuted !== 'undefined' && !isMuted && gameVolume > 0) {
-        const playAudioFile = (file) => {
-            const audio = new Audio(file);
-            audio.volume = gameVolume;
-            audio.play().catch(e => console.error("Audio play failed:", e));
-        };
-        if (text === '度！') {
-            playAudioFile('du.mp3');
-        } else if (text === 'dllm') {
-            playAudioFile('dllm.mp3');
-        } else if (text === '陽光彩虹小白馬') {
-            playAudioFile('Sunshine, Rainbow, White Pony.mp3');
-        } else if (text === '葳葳孟孟') {
-            playAudioFile('Wei & Meng.mp3');
-        } else if (text === '對不起 我沒打好' || text === '對不起我沒打好') {
-            playAudioFile('sorry.mp3');
-        } else if (text === '太爽不算 再來一把' || text === '太爽不算再來一把') {
-            playAudioFile('On cloud nine1.mp3');
-        } else if (text === '贏了沒爽 再來一把' || text === '贏了沒爽再來一把') {
-            playAudioFile('On cloud nine2.mp3');
-        } else if (text === '沒救 繼續沉淪' || text === '沒救繼續沉淪') {
-            playAudioFile('Hopeless.mp3');
-        } else if (window.speechSynthesis) {
-            // 沒有專屬 mp3 音效的快捷語音使用 TTS 報讀
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-TW';
-            utterance.rate = 1.1;
-            utterance.volume = gameVolume;
-            window.speechSynthesis.speak(utterance);
+    // 只有在點選「快捷語音」按鈕時才播放專屬音效或 TTS 語音朗讀
+    if (isEmote) {
+        const muted = typeof isMuted !== 'undefined' ? isMuted : false;
+        if (window.AudioManager) {
+            window.AudioManager.playEmoteAudio(text, gameVolume, muted);
         }
     }
     
