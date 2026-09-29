@@ -1,6 +1,6 @@
 {
-  "name": "喜八路麻將",
-  "short_name": "喜八路麻將",
+  "name": "喜八路麻",
+  "short_name": "喜八路麻",
   "description": "台灣十六張麻將，支援單機與多人連線",
   "start_url": "./",
   "display": "standalone",
