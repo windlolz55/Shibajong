@@ -61,8 +61,8 @@
             const fontSize = size * 0.65; 
             ctx.font = `${fontSize}px "Ma Shan Zheng", cursive`;
             
-            // 將字畫在正中心
-            ctx.fillText('麻', size / 2, size / 2 + size * 0.05);
+            // 將字畫在正中心 (稍微往上偏移來修正中文字型重心的問題)
+            ctx.fillText('麻', size / 2, size / 2 - size * 0.03);
 
             document.getElementById('canvases').appendChild(canvas);
 
