@@ -16,7 +16,7 @@ if (typeof MahjongGame !== 'undefined') {
         // 計算需要的組合數 (以手牌數量為準，避免 melds 數量計算錯誤)
         let setsNeeded = Math.floor(handCopy.length / 3);
         return this.isHuPattern(counts, setsNeeded, false);
-    }
+    },
 
     isHuPattern(counts, setsNeeded, hasPair) {
         const keys = Object.keys(counts).filter(k => counts[k] > 0).sort();
@@ -51,9 +51,8 @@ if (typeof MahjongGame !== 'undefined') {
             }
         }
         return false;
-    }
+    },
 
-,
     getAllTileTypes() {
         let types = [];
         for (let i = 1; i <= 9; i++) {
@@ -68,7 +67,7 @@ if (typeof MahjongGame !== 'undefined') {
             types.push({ id: `DRAGON_${index}_TEST`, type: TILE_TYPES.DRAGON, value: dragon, svgUrl: this.getSvgUrl(TILE_TYPES.DRAGON, dragon) });
         });
         return types;
-    }
+    },
 
     getWaitTiles(playerIndex) {
         let waitTiles = [];
@@ -79,7 +78,7 @@ if (typeof MahjongGame !== 'undefined') {
             }
         }
         return waitTiles;
-    }
+    },
 
     calculateTai(playerIndex, winningTile, isSelfDraw, loserIndex = -1) {
         let details = [];
