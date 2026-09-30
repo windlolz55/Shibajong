@@ -1,13 +1,13 @@
-﻿// --- 暻餃??詨??摩 (game.js) ---
+// --- 麻將核心邏輯 (game.js) ---
 
 const TILE_TYPES = {
-    CHAR: '??, DOT: '蝑?, BAM: '璇?, 
-    WIND: '憸?, DRAGON: '蝞?, FLOWER: '??
+    CHAR: '萬', DOT: '筒', BAM: '條', 
+    WIND: '風', DRAGON: '箭', FLOWER: '花'
 };
 
-const WIND_NAMES = ['??, '??, '镼?, '??];
-const DRAGON_NAMES = ['銝?, '??, '??];
-const FLOWER_NAMES = ['??, '憭?, '蝘?, '??, '璇?, '??, '蝡?, '??];
+const WIND_NAMES = ['東', '南', '西', '北'];
+const DRAGON_NAMES = ['中', '發', '白'];
+const FLOWER_NAMES = ['春', '夏', '秋', '冬', '梅', '蘭', '竹', '菊'];
 
 class MahjongGame {
     constructor(gameLength = 'infinite', stakeConfig = '100_20_3000') {
@@ -19,8 +19,8 @@ class MahjongGame {
         this.currentTurn = 0;
         this.dealerIndex = 0;
         
-        // 摨??憪??身摰?
-        this.stakeConfig = stakeConfig; // '100_20_3000' ??'50_20_1500'
+        // 底台與初始資金設定
+        this.stakeConfig = stakeConfig; // '100_20_3000' 或 '50_20_1500'
         let baseScore = 100, taiScore = 20, initialScore = 3000;
         if (stakeConfig === '50_20_1500' || stakeConfig === '50_20_5000') {
             baseScore = 50;
@@ -44,25 +44,25 @@ class MahjongGame {
         this.turnEpoch = 0;
         this.actionEvent = null;
         this.isKongReplacement = false;
-        this.isDrawnTurn = true; // 閮??嗅????臬?箄撌望????(蝣?????????舀?瑽?瑽??芣)
+        this.isDrawnTurn = true; // 記錄當前回合是否為自己摸牌回合 (碰/吃後的出牌回合不可暗槓、加槓或自摸)
         
-        // 摰???賜????
+        // 宣告聽牌狀態
         this.tenpaiStatus = [false, false, false, false];
         this.tenpaiType = [null, null, null, null]; // 'TIAN', 'DI', 'NORMAL'
         
         this.gameLength = gameLength; // '1_round', '1_match', 'infinite'
         this.roundWind = 0; // 0=East, 1=South, 2=West, 3=North
         this.initialDealer = 0; // Host is usually 0
-        this.dealerCount = 0; // ???甈⊥ (optional, nice to have for UI)
+        this.dealerCount = 0; // 連莊次數 (optional, nice to have for UI)
         this.isMatchOver = false;
         this.botDifficulty = 'normal';
-        this.riggedNextDraw = null; // 蝞∠??⊥?摰?銝撘菜??{ type, value }
+        this.riggedNextDraw = null; // 管理員指定下一張摸牌 { type, value }
         
         this.generateDeck();
     }
 
     getSvgUrl(type, value) {
-        // 雿輻?祆?靽格?? tiles 鞈?憭?(撌脣?摮????脫?粹??莎?摰????啁?喟絞摮?)
+        // 使用本機修改過的 tiles 資料夾 (已將字牌的藍色改為黑色，完美還原台灣傳統字體)
         const baseUrl = 'tiles/';
         if (type === TILE_TYPES.CHAR) {
             return `${baseUrl}${(7 + value).toString().padStart(2, '0')}-characters-${value}.svg`;
@@ -74,15 +74,15 @@ class MahjongGame {
             return `${baseUrl}${(25 + value).toString().padStart(2, '0')}-bamboos-${value}.svg`;
         }
         if (type === TILE_TYPES.WIND) {
-            const windMap = { '??: '04-east-wind.svg', '??: '05-south-wind.svg', '镼?: '06-west-wind.svg', '??: '07-north-wind.svg' };
+            const windMap = { '東': '04-east-wind.svg', '南': '05-south-wind.svg', '西': '06-west-wind.svg', '北': '07-north-wind.svg' };
             return `${baseUrl}${windMap[value]}`;
         }
         if (type === TILE_TYPES.DRAGON) {
-            const dragonMap = { '銝?: '03-red-dragon.svg', '??: '02-green-dragon.svg', '??: '01-white-dragon.svg' };
+            const dragonMap = { '中': '03-red-dragon.svg', '發': '02-green-dragon.svg', '白': '01-white-dragon.svg' };
             return `${baseUrl}${dragonMap[value]}`;
         }
         if (type === TILE_TYPES.FLOWER) {
-            const flowerMap = { '??: '35-spring.svg', '憭?: '36-summer.svg', '蝘?: '37-autumn.svg', '??: '38-winter.svg', '璇?: '39-plum.svg', '??: '40-orchid.svg', '蝡?: '42-bamboo.svg', '??: '41-chrysanthemum.svg' };
+            const flowerMap = { '春': '35-spring.svg', '夏': '36-summer.svg', '秋': '37-autumn.svg', '冬': '38-winter.svg', '梅': '39-plum.svg', '蘭': '40-orchid.svg', '竹': '42-bamboo.svg', '菊': '41-chrysanthemum.svg' };
             return `${baseUrl}${flowerMap[value]}`;
         }
         return '';
@@ -143,7 +143,7 @@ class MahjongGame {
         this.hands[this.dealerIndex].push(this.deck.pop());
         this.currentTurn = this.dealerIndex;
         
-        // ????鋆
+        // 處理開局補花
         for (let p = 0; p < 4; p++) {
             this.processFlowers(p);
             this.sortHand(this.hands[p]);
@@ -167,7 +167,7 @@ class MahjongGame {
                     this.melds[playerIndex].push(flowerMeld);
                 }
                 flowerMeld.tiles.push(flowerTile);
-                hand.push(this.deck.pop()); // 鋆?撘萇?
+                hand.push(this.deck.pop()); // 補一張牌
                 hasFlower = true;
             }
         }
@@ -184,7 +184,7 @@ class MahjongGame {
 
     drawTile(playerIndex) {
         if (this.deck.length <= 16) {
-            this.handleDrawGame(); // 瘚?
+            this.handleDrawGame(); // 流局
             return null;
         }
         this.isDrawnTurn = true;
@@ -197,12 +197,12 @@ class MahjongGame {
                 value: value,
                 svgUrl: this.getSvgUrl(type, value)
             };
-            this.riggedNextDraw = null; // 銝甈⊥扳???
+            this.riggedNextDraw = null; // 一次性消耗
         } else {
             drawnTile = this.deck.pop();
         }
         this.hands[playerIndex].push(drawnTile);
-        this.processFlowers(playerIndex); // 鋆
+        this.processFlowers(playerIndex); // 補花
         return this.hands[playerIndex][this.hands[playerIndex].length - 1];
     }
 
@@ -217,14 +217,14 @@ class MahjongGame {
 
         for (let i = 0; i < 4; i++) {
             if (i === this.dealerIndex && this.discardPool.length === 0) {
-                // ?振?洵銝撘萄?嚗予??
+                // 莊家打第一張前：天聽
                 eligible[i] = 'TIAN';
             } else if (i !== this.dealerIndex) {
                 if (this.hands[i].length === 16 && this.discardPool.length === 0) {
-                    // ?振撠?貊???(?振?摰?)嚗予??
+                    // 閒家尚未摸牌前 (莊家剛發完牌)：天聽
                     eligible[i] = 'TIAN';
                 } else if (this.hands[i].length === 17 && this.discardPool.length < 4) {
-                    // ?振?∩犖?１銝鈭洵銝撘萇?敺?(皞??蝚砌?撘萇???嚗??
+                    // 閒家無人吃碰且摸了第一張牌後 (準備打出第一張牌前)：地聽
                     eligible[i] = 'DI';
                 }
             }
@@ -237,13 +237,13 @@ class MahjongGame {
         
         const eligible = this.checkTianDiTingEligibility();
         const type = eligible[playerIndex];
-        if (!type) return; // 銝泵?予?賢?質??澆停銝?閮勗恐??
+        if (!type) return; // 不符合天聽地聽資格就不允許宣告
         
         this.tenpaiStatus[playerIndex] = true;
         this.tenpaiType[playerIndex] = type;
         
-        // 閫貊?唬?隞?
-        this.actionEvent = { playerIndex, type: '?賜?', timestamp: Date.now() };
+        // 觸發新事件
+        this.actionEvent = { playerIndex, type: '聽牌', timestamp: Date.now() };
     }
 
     discardTile(playerIndex, tileId) {
@@ -254,7 +254,7 @@ class MahjongGame {
         
         if (tileIndex !== -1) {
             this.isDrawnTurn = false;
-            this.isKongReplacement = false; // 皜瑽?????
+            this.isKongReplacement = false; // 清除槓上開花狀態
             const tile = hand.splice(tileIndex, 1)[0];
             this.discardPool.push(tile);
             this.sortHand(hand);
@@ -313,7 +313,7 @@ class MahjongGame {
         const hand = this.hands[playerIndex];
         const melds = this.melds[playerIndex];
         
-        // 1. ?? (Concealed Kong): hand has 4 of the same tile
+        // 1. 暗槓 (Concealed Kong): hand has 4 of the same tile
         let counts = {};
         hand.forEach(t => {
             let key = `${t.type}_${t.value}`;
@@ -323,7 +323,7 @@ class MahjongGame {
             }
         });
 
-        // 2. ?? (Promoted Kong): hand has 1 tile that matches a PONG in melds
+        // 2. 加槓 (Promoted Kong): hand has 1 tile that matches a PONG in melds
         melds.forEach(m => {
             if (m.type === 'PONG') {
                 const pongTile = m.tiles[0];
@@ -370,7 +370,7 @@ class MahjongGame {
             counts[key] = (counts[key] || 0) + 1;
         });
 
-        // 閮??閬?蝯???(隞交???皞??踹? melds ?賊?閮??航炊)
+        // 計算需要的組合數 (以手牌數量為準，避免 melds 數量計算錯誤)
         let setsNeeded = Math.floor(handCopy.length / 3);
         return this.isHuPattern(counts, setsNeeded, false);
     }
@@ -434,7 +434,7 @@ class MahjongGame {
 
         if (hu) {
             this.hands[hu.playerIndex].push(tile);
-            this.handleWinGame(hu.playerIndex, this.currentTurn); // ?暹?? currentTurn
+            this.handleWinGame(hu.playerIndex, this.currentTurn); // 放槍者是 currentTurn
         } else if (pk) {
             this.gameState = 'PLAYING';
             this.currentTurn = pk.playerIndex;
@@ -455,12 +455,12 @@ class MahjongGame {
     }
 
     executePong(playerIndex, tile) {
-        this.isDrawnTurn = false; // 蝣啁?敺??箇???銝????瑽??芣
+        this.isDrawnTurn = false; // 碰牌後的出牌回合不可暗槓、加槓或自摸
         let hand = this.hands[playerIndex];
         let matches = hand.filter(t => t.type === tile.type && t.value === tile.value);
         this.hands[playerIndex] = hand.filter(t => !(t.id === matches[0].id || t.id === matches[1].id));
         this.melds[playerIndex].push({ type: 'PONG', tiles: [matches[0], matches[1], tile] });
-        this.actionEvent = { playerIndex, type: '蝣?, tile, timestamp: Date.now() };
+        this.actionEvent = { playerIndex, type: '碰', tile, timestamp: Date.now() };
     }
 
     executeKong(playerIndex, tile) {
@@ -468,8 +468,8 @@ class MahjongGame {
         let matches = hand.filter(t => t.type === tile.type && t.value === tile.value);
         this.hands[playerIndex] = hand.filter(t => !(t.id === matches[0].id || t.id === matches[1].id || t.id === matches[2].id));
         this.melds[playerIndex].push({ type: 'KONG', tiles: [matches[0], matches[1], matches[2], tile] });
-        this.actionEvent = { playerIndex, type: '瑽?, tile, timestamp: Date.now() };
-        this.isKongReplacement = true; // ?脣瑽?????
+        this.actionEvent = { playerIndex, type: '槓', tile, timestamp: Date.now() };
+        this.isKongReplacement = true; // 進入槓上開花狀態
         this.drawTile(playerIndex); 
     }
 
@@ -481,29 +481,29 @@ class MahjongGame {
         if (kongType === 'ANKONG') {
             this.hands[playerIndex] = hand.filter(t => t.type !== tile.type || t.value !== tile.value);
             this.melds[playerIndex].push({ type: 'ANKONG', tiles: matches });
-            this.actionEvent = { playerIndex, type: '??', tile, timestamp: Date.now() };
+            this.actionEvent = { playerIndex, type: '暗槓', tile, timestamp: Date.now() };
         } else if (kongType === 'JIAKONG') {
             let pongMeld = this.melds[playerIndex].find(m => m.type === 'PONG' && m.tiles[0].type === tile.type && m.tiles[0].value === tile.value);
             if (pongMeld) {
                 pongMeld.type = 'KONG';
                 pongMeld.tiles.push(tile);
                 this.hands[playerIndex] = hand.filter(t => t.id !== tile.id);
-                this.actionEvent = { playerIndex, type: '??', tile, timestamp: Date.now() };
+                this.actionEvent = { playerIndex, type: '加槓', tile, timestamp: Date.now() };
             }
         }
-        this.isKongReplacement = true; // ?脣瑽?????
+        this.isKongReplacement = true; // 進入槓上開花狀態
         this.drawTile(playerIndex);
     }
     executeChow(playerIndex, tile, payloadTiles) {
-        this.isDrawnTurn = false; // ??敺??箇???銝????瑽??芣
+        this.isDrawnTurn = false; // 吃牌後的出牌回合不可暗槓、加槓或自摸
         let hand = this.hands[playerIndex];
         this.hands[playerIndex] = hand.filter(t => !(t.id === payloadTiles[0].id || t.id === payloadTiles[1].id));
-        // ?啁暻餃?閬?嚗???嚗??脖???蝵格?舫蝯迤銝剝?嚗撌望????拙撐蝵格撌血?拙
+        // 台灣麻將規則：吃牌時，吃進來的牌置於副露組正中間，自己手牌的兩張置於左右兩側
         let handTiles = [payloadTiles[0], payloadTiles[1]];
         handTiles.sort((a, b) => a.value - b.value);
         let newMeld = [handTiles[0], tile, handTiles[1]];
         this.melds[playerIndex].push({ type: 'CHOW', tiles: newMeld });
-        this.actionEvent = { playerIndex, type: '??, tile, timestamp: Date.now() };
+        this.actionEvent = { playerIndex, type: '吃', tile, timestamp: Date.now() };
     }
 
     nextTurn() {
@@ -515,12 +515,12 @@ class MahjongGame {
         this.gameState = 'GAME_OVER';
         this.winner = winnerIndex;
         
-        const isSelfDraw = (winnerIndex === loserIndex); // ?芣
-        // ?∟??航?賊??臬鈭箸瑽??撐?∠???◤? winner ??hands ?敺
+        const isSelfDraw = (winnerIndex === loserIndex); // 自摸
+        // 無論是自摸還是別人放槍，這張胡的牌都會被加到 winner 的 hands 最後面
         const winningTile = this.hands[winnerIndex][this.hands[winnerIndex].length - 1];
         const isWinnerDealer = (winnerIndex === this.dealerIndex);
         
-        // ?振???憿??唳 (?振 1 ??+ ??N ??N 2N ??
+        // 莊家與連莊額外台數 (莊家 1 台 + 連 N 拉 N 2N 台)
         const dealerStreakTai = 1 + (this.dealerCount * 2);
         
         const taiData = this.calculateTai(winnerIndex, winningTile, isSelfDraw, loserIndex);
@@ -542,7 +542,7 @@ class MahjongGame {
 
         if (isSelfDraw) {
             if (isWinnerDealer) {
-                // 1. ?振?芣嚗?摰園?摰嗅??憭??振?啗??????(calculateTai ?批歇?)
+                // 1. 莊家自摸：三家閒家均需多賠莊家台與連莊台 (calculateTai 內已包含)
                 const winAmount = this.baseScore + (taiData.totalTai * this.taiScore);
                 for (let i = 0; i < 4; i++) {
                     if (i !== winnerIndex) {
@@ -553,7 +553,7 @@ class MahjongGame {
                     }
                 }
             } else {
-                // 2. ?振?芣嚗憭摰園?摰嗅鞈蝷?賂??芣??振?憭? (?振1??+ ?Λ? 2N??
+                // 2. 閒家自摸：另外兩家閒家只賠基礎台數，只有莊家需多賠 (莊家1台 + 連N拉N 2N台)
                 const baseAmount = this.baseScore + (taiData.totalTai * this.taiScore);
                 const dealerTai = taiData.totalTai + dealerStreakTai;
                 const dealerAmount = this.baseScore + (dealerTai * this.taiScore);
@@ -569,9 +569,9 @@ class MahjongGame {
                 }
             }
         } else {
-            // ?暹? (??)
-            // ?亥?摰嗆瑽????振?∩犖嚗alculateTai ?批歇? (?振1??+ ?Λ?)
-            // ?仿?摰嗆瑽策?振嚗alculateTai ?找??思遙雿?摰嗅
+            // 放槍 (抓沖)
+            // 若莊家放槍 或 莊家胡人，calculateTai 內已包含 (莊家1台 + 連N拉N)
+            // 若閒家放槍給閒家，calculateTai 內不含任何莊家台
             const scoreChange = this.baseScore + (taiData.totalTai * this.taiScore);
             this.scores[loserIndex] -= scoreChange;
             this.scores[winnerIndex] += scoreChange;
@@ -579,12 +579,12 @@ class MahjongGame {
             this.settlementData.scoreChanges[winnerIndex] = scoreChange;
         }
 
-        // ?振????摩
+        // 莊家連莊邏輯
         if (winnerIndex === this.dealerIndex) {
-            this.dealerCount++; // ???
+            this.dealerCount++; // 連莊
             this.settlementData.dealerChanged = false;
         } else {
-            this.dealerIndex = (this.dealerIndex + 1) % 4; // 銝?
+            this.dealerIndex = (this.dealerIndex + 1) % 4; // 下莊
             this.dealerCount = 0;
             this.settlementData.dealerChanged = true;
             if (this.dealerIndex === this.initialDealer) {
@@ -614,12 +614,12 @@ class MahjongGame {
 
     handleDrawGame() {
         this.gameState = 'GAME_OVER';
-        this.winner = -1; // 瘚?
+        this.winner = -1; // 流局
         this.settlementData = {
             winner: -1,
             isDraw: true,
             scoreChanges: [0, 0, 0, 0],
-            dealerChanged: false, // 瘚????
+            dealerChanged: false, // 流局連莊
             dealer: this.dealerIndex,
             dealerCount: this.dealerCount,
             baseScore: this.baseScore,
@@ -665,90 +665,90 @@ class MahjongGame {
         const melds = this.melds[playerIndex].filter(m => m.type !== 'FLOWER');
         const isDealer = playerIndex === this.dealerIndex;
 
-        // 0. 憭抵 / ?啗
+        // 0. 天聽 / 地聽
         const tType = this.tenpaiType[playerIndex];
         if (tType === 'TIAN') {
-            details.push({ name: '憭抵', tai: 8 });
+            details.push({ name: '天聽', tai: 8 });
             totalTai += 8;
         } else if (tType === 'DI') {
-            details.push({ name: '?啗', tai: 4 });
+            details.push({ name: '地聽', tai: 4 });
             totalTai += 4;
         }
 
-        // 1. ?振????唳
-        // ?芣??其誑銝?瘜?亥??亙蝷?賂?
-        // 1) 韐振?航?摰?(?振?芣??摰嗆?瘝?
-        // 2) 頛詨振?曄??振 (?振???振)
-        // (?亦?振?芣嚗蝷?訾?閮?摰嗅嚗?摰嗅?鞈??典??梁?蝞甈曇??敦?函???)
+        // 1. 莊家與連莊台數
+        // 只有在以下情況直接計入基礎台數：
+        // 1) 贏家是莊家 (莊家自摸或莊家抓沖)
+        // 2) 輸家放炮者是莊家 (閒家抓沖莊家)
+        // (若為閒家自摸，基礎台數不計莊家台，莊家多賠的部分由結算扣款與明細獨立處理)
         if (isDealer || (!isSelfDraw && loserIndex === this.dealerIndex)) {
-            details.push({ name: '?振', tai: 1 });
+            details.push({ name: '莊家', tai: 1 });
             totalTai += 1;
             
             if (this.dealerCount > 0) {
                 const streakTai = this.dealerCount * 2;
-                details.push({ name: `??{this.dealerCount}??{this.dealerCount}`, tai: streakTai });
+                details.push({ name: `連${this.dealerCount}拉${this.dealerCount}`, tai: streakTai });
                 totalTai += streakTai;
             }
         }
 
-        // 2. ?芣 / ?皜?/ ?皜??訾?
+        // 2. 自摸 / 門清 / 門清一摸三
         const isMenQing = melds.length === 0;
         if (isMenQing && isSelfDraw) {
-            details.push({ name: '?皜??訾?', tai: 3 });
+            details.push({ name: '門清一摸三', tai: 3 });
             totalTai += 3;
         } else {
             if (isMenQing) {
-                details.push({ name: '?皜?, tai: 1 });
+                details.push({ name: '門清', tai: 1 });
                 totalTai += 1;
             }
             if (isSelfDraw) {
-                details.push({ name: '?芣', tai: 1 });
+                details.push({ name: '自摸', tai: 1 });
                 totalTai += 1;
             }
         }
         
-        // 3. ?刻
-        // 甇斗???(hand)撌脩???敺撘菔??蝮賡17撘菜?隞乩?)嚗???????敺?撘萇宏?歹??甇?Ⅱ閮?隞??砍?賭?暻潛?
+        // 3. 獨聽
+        // 此時手牌(hand)已經包含最後那張胡牌(總長17張或以上)，我們必須先把最後一張移除，才能正確計算他原本在聽什麼牌
         const originalHand = [...hand];
         originalHand.pop();
         this.hands[playerIndex] = originalHand;
         let waitTiles = this.getWaitTiles(playerIndex);
-        this.hands[playerIndex] = hand; // 蝞?????
+        this.hands[playerIndex] = hand; // 算完再加回來
         
         if (waitTiles.length === 1) {
-            details.push({ name: '?株', tai: 1 });
+            details.push({ name: '單聽', tai: 1 });
             totalTai += 1;
         }
         
-        // ?冽?鈭?/ ??鈭?
+        // 全求人 / 半求人
         if (melds.length === 5) {
             if (isSelfDraw) {
-                details.push({ name: '??鈭?, tai: 1 });
+                details.push({ name: '半求人', tai: 1 });
                 totalTai += 1;
             } else {
-                details.push({ name: '?冽?鈭?, tai: 2 });
+                details.push({ name: '全求人', tai: 2 });
                 totalTai += 2;
             }
         }
         
-        // 瑽??
+        // 槓上開花
         if (isSelfDraw && this.isKongReplacement) {
-            details.push({ name: '瑽??', tai: 1 });
+            details.push({ name: '槓上開花', tai: 1 });
             totalTai += 1;
         }
         
-        // 瘚瑕??? / 瘝喳???
+        // 海底撈月 / 河底撈魚
         if (this.deck.length <= 16) {
             if (isSelfDraw) {
-                details.push({ name: '瘚瑕???', tai: 1 });
+                details.push({ name: '海底撈月', tai: 1 });
                 totalTai += 1;
             } else {
-                details.push({ name: '瘝喳???', tai: 1 });
+                details.push({ name: '河底撈魚', tai: 1 });
                 totalTai += 1;
             }
         }
 
-        // ????
+        // 分析牌型
         let allTiles = [...hand];
         if (winningTile && !hand.some(t => t.id === winningTile.id)) {
             allTiles.push(winningTile);
@@ -762,7 +762,7 @@ class MahjongGame {
             counts[key] = (counts[key] || 0) + 1;
         });
 
-        // ?梯??摮??(銝???????鈭???
+        // 隱藏的刻子數量 (三暗刻/四暗刻/五暗刻)
         let concealedPongs = 0;
         let concealedHandCounts = {};
         hand.forEach(t => {
@@ -770,30 +770,30 @@ class MahjongGame {
             concealedHandCounts[key] = (concealedHandCounts[key] || 0) + 1;
         });
         
-        // 憒??舀瑽??敺撘菜瑽????賜??嚗???祆??ㄐ撠望?銝撐嚗?
+        // 如果是放槍，最後那張放槍的牌不能算暗刻（除非原本手牌裡就有三張）
         if (!isSelfDraw && winningTile) {
             const winKey = `${winningTile.type}_${winningTile.value}`;
-            // ?芣????鋆∪停憭扳蝑3撘菜??舀??鳴?韐??撐銝?
-            // ?ㄐ concealedHandCounts ?芰?? hand ?摰對??暹???winningTile ???暸?hand嚗?隞交撠?嚗?
+            // 只有原本手牌裡就大於等於3張才是暗刻，贏的這張不算
+            // 這裡 concealedHandCounts 只算原本 hand 的內容，放槍時 winningTile 還沒放進 hand，所以是對的！
         } else if (isSelfDraw) {
-            // ?芣???敺?脩??歇蝬 hand 鋆⊿鈭??臭誑?湔蝯梯?
+            // 自摸時，最後摸進的牌已經在 hand 裡面了，可以直接統計
         }
         
         Object.keys(concealedHandCounts).forEach(key => {
             if (concealedHandCounts[key] >= 3) concealedPongs++;
         });
         
-        if (concealedPongs === 5) { details.push({ name: '鈭???, tai: 8 }); totalTai += 8; }
-        else if (concealedPongs === 4) { details.push({ name: '????, tai: 5 }); totalTai += 5; }
-        else if (concealedPongs === 3) { details.push({ name: '銝???, tai: 2 }); totalTai += 2; }
+        if (concealedPongs === 5) { details.push({ name: '五暗刻', tai: 8 }); totalTai += 8; }
+        else if (concealedPongs === 4) { details.push({ name: '四暗刻', tai: 5 }); totalTai += 5; }
+        else if (concealedPongs === 3) { details.push({ name: '三暗刻', tai: 2 }); totalTai += 2; }
         
-        // 5. ????
+        // 5. 四喜牌
         let windPongs = 0;
         let windPairs = 0;
         let hasSeatWind = false;
         let hasRoundWind = false;
         
-        const seatWindNames = ['??, '??, '镼?, '??]; 
+        const seatWindNames = ['東', '南', '西', '北']; 
         const mySeatWind = seatWindNames[playerIndex];
         const myRoundWind = seatWindNames[this.roundWind % 4];
         
@@ -808,20 +808,20 @@ class MahjongGame {
         });
         
         if (windPongs === 4) {
-            details.push({ name: '憭批???, tai: 16 });
+            details.push({ name: '大四喜', tai: 16 });
             totalTai += 16;
         } else if (windPongs === 3 && windPairs === 1) {
-            details.push({ name: '撠???, tai: 8 });
+            details.push({ name: '小四喜', tai: 8 });
             totalTai += 8;
         }
         
-        // ?憸典??憸典 (憒?銝憭批????虜撠???????憸??◢?鳴??ㄐ?函??斗蝯血)
+        // 門風刻與圈風刻 (如果不是大四喜，通常小四喜也會疊加門風/圈風刻，這裡獨立判斷給台)
         if (windPongs < 4) {
-            if (hasSeatWind) { details.push({ name: '?憸典', tai: 1 }); totalTai += 1; }
-            if (hasRoundWind) { details.push({ name: '?◢??, tai: 1 }); totalTai += 1; }
+            if (hasSeatWind) { details.push({ name: '門風刻', tai: 1 }); totalTai += 1; }
+            if (hasRoundWind) { details.push({ name: '圈風刻', tai: 1 }); totalTai += 1; }
         }
         
-        // 銝???
+        // 三元牌
         let dragonPongs = 0;
         let dragonPairs = 0;
         
@@ -832,60 +832,60 @@ class MahjongGame {
         });
         
         if (dragonPongs === 3) {
-            details.push({ name: '憭找???, tai: 8 });
+            details.push({ name: '大三元', tai: 8 });
             totalTai += 8;
         } else if (dragonPongs === 2 && dragonPairs === 1) {
-            details.push({ name: '撠???, tai: 4 });
+            details.push({ name: '小三元', tai: 4 });
             totalTai += 4;
         } else if (dragonPongs > 0) {
-            details.push({ name: '銝???, tai: dragonPongs });
+            details.push({ name: '三元刻', tai: dragonPongs });
             totalTai += dragonPongs;
         }
         
-        // 6. 銝?脣
+        // 6. 一色台
         const hasChar = allTiles.some(t => t.type === TILE_TYPES.CHAR);
         const hasDot = allTiles.some(t => t.type === TILE_TYPES.DOT);
         const hasBam = allTiles.some(t => t.type === TILE_TYPES.BAM);
         const hasHonor = allTiles.some(t => t.type === TILE_TYPES.WIND || t.type === TILE_TYPES.DRAGON);
 
         if (!hasChar && !hasDot && !hasBam) {
-            details.push({ name: '摮???, tai: 16 });
+            details.push({ name: '字一色', tai: 16 });
             totalTai += 16;
         } else if ((hasChar ? 1 : 0) + (hasDot ? 1 : 0) + (hasBam ? 1 : 0) === 1) {
             if (hasHonor) {
-                details.push({ name: '瘛瑚???, tai: 4 });
+                details.push({ name: '混一色', tai: 4 });
                 totalTai += 4;
             } else {
-                details.push({ name: '皜???, tai: 8 });
+                details.push({ name: '清一色', tai: 8 });
                 totalTai += 8;
             }
         }
         
-        // 7. 撟唾?１蝣啗
+        // 7. 平胡與碰碰胡
         const countValues = Object.values(counts);
         const hasChow = melds.some(m => m.type === 'CHOW');
         const isPengPengHu = !hasChow && countValues.every(c => c >= 3 || c === 2) && countValues.filter(c => c === 2).length === 1;
         
         if (isPengPengHu) {
-            details.push({ name: '蝣啁１??, tai: 4 });
+            details.push({ name: '碰碰胡', tai: 4 });
             totalTai += 4;
         }
         
         const hasPong = melds.some(m => m.type === 'PONG' || m.type === 'KONG');
         if (!hasPong && !hasHonor && countValues.every(c => c < 3) && waitTiles.length > 1) {
-            details.push({ name: '撟唾', tai: 2 });
+            details.push({ name: '平胡', tai: 2 });
             totalTai += 2;
         }
 
-        // 10. 甇?
+        // 10. 正花
         const flowerMeld = this.melds[playerIndex].find(m => m.type === 'FLOWER');
         if (flowerMeld) {
             const seatIndex = playerIndex; 
-            const FLOWER_NAMES = ['??, '憭?, '蝘?, '??, '璇?, '??, '蝡?, '??];
+            const FLOWER_NAMES = ['春', '夏', '秋', '冬', '梅', '蘭', '竹', '菊'];
             const matchingFlowers = [FLOWER_NAMES[seatIndex], FLOWER_NAMES[seatIndex + 4]];
             flowerMeld.tiles.forEach(t => {
                 if (matchingFlowers.includes(t.value)) {
-                    details.push({ name: `甇? (${t.value})`, tai: 1 });
+                    details.push({ name: `正花 (${t.value})`, tai: 1 });
                     totalTai += 1;
                 }
             });
@@ -911,16 +911,16 @@ class MahjongGame {
         } else {
             const winner = typeof actionType === 'number' ? actionType : (this.dealerIndex + 1) % 4;
             
-            // ??閰脩摰嗉??嚗Ⅱ靽?蝞?豢??舐甇?Ⅱ???∠?
+            // 取得該玩家聽的牌，確保結算台數時是用正確的牌胡牌
             const waitTiles = this.getWaitTiles(winner);
-            const wTile = waitTiles.length > 0 ? waitTiles[0] : { type: '??, value: 1 };
+            const wTile = waitTiles.length > 0 ? waitTiles[0] : { type: '萬', value: 1 };
             const winningTileObj = { id: `CHEAT_WIN_${Date.now()}`, type: wTile.type, value: wTile.value, svgUrl: this.getSvgUrl(wTile.type, wTile.value) };
             
-            // 憒??頛芸韐振嚗撠望?芣嚗?停?航?乩犖??
+            // 如果原本輪到贏家，那就是自摸；否則就是胡別人的
             const isSelfDraw = originalTurn === winner;
             const loser = isSelfDraw ? winner : (originalTurn === -1 ? (winner + 1) % 4 : originalTurn);
             
-            // ?撐???脫???撱Ｙ???霈?handleWinGame ?賣???
+            // 把這張牌塞進手牌或廢牌堆，讓 handleWinGame 能抓到
             if (isSelfDraw) {
                 this.hands[winner].push(winningTileObj);
             } else {
@@ -943,7 +943,7 @@ class MahjongGame {
         if (this.gameState === 'PLAYING' || this.gameState === 'WAIT_ACTION') {
             for (let i = 0; i < 4; i++) {
                 if (this.currentTurn === i && this.hands[i].length % 3 === 2) {
-                    // 憒??航府?拙振????(????17 撘菜? 14 撘萇?)嚗?宏?箸?敺??靘??賜?
+                    // 如果是該玩家的回合 (手牌有 17 張或 14 張等)，暫時移出最後摸的牌來算聽牌
                     const tempTile = this.hands[i].pop();
                     waitTilesList[i] = this.getWaitTiles(i);
                     this.hands[i].push(tempTile);
@@ -998,23 +998,23 @@ class MahjongGame {
         let newHand = [];
         let newMelds = [];
         
-        // ?箔?霈頂蝯梯甇?Ⅱ????waitTiles)嚗????冽?鈭箇????賣?閰脣憛?16 撘萇?嚗?銝撘菜??怨????
-        // 撘瑕?∠???憛?撘萄?? discardPool嚗????敺?撘萇雿???
+        // 為了讓系統能正確抓到「聽牌」(waitTiles)，所有非全求人的牌型都應該只塞 16 張牌（少一張才叫聽牌）。
+        // 強制胡牌時會塞一張假牌到 discardPool，或者把最後一張當作贏牌。
         switch (cheatType) {
             case 'da_si_xi':
                 newHand = [
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '镼?), createTile(TILE_TYPES.WIND, '镼?), createTile(TILE_TYPES.WIND, '镼?),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南'), createTile(TILE_TYPES.WIND, '南'), createTile(TILE_TYPES.WIND, '南'),
+                    createTile(TILE_TYPES.WIND, '西'), createTile(TILE_TYPES.WIND, '西'), createTile(TILE_TYPES.WIND, '西'),
+                    createTile(TILE_TYPES.WIND, '北'), createTile(TILE_TYPES.WIND, '北'), createTile(TILE_TYPES.WIND, '北'),
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2)
                 ];
                 break;
             case 'da_san_yuan':
                 newHand = [
-                    createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?),
-                    createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??),
-                    createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??),
+                    createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'),
+                    createTile(TILE_TYPES.DRAGON, '發'), createTile(TILE_TYPES.DRAGON, '發'), createTile(TILE_TYPES.DRAGON, '發'),
+                    createTile(TILE_TYPES.DRAGON, '白'), createTile(TILE_TYPES.DRAGON, '白'), createTile(TILE_TYPES.DRAGON, '白'),
                     createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 5),
                     createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 2),
                     createTile(TILE_TYPES.CHAR, 1)
@@ -1027,17 +1027,17 @@ class MahjongGame {
                     createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1),
                     createTile(TILE_TYPES.BAM, 5), createTile(TILE_TYPES.BAM, 5), createTile(TILE_TYPES.BAM, 5),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東')
                 ];
                 break;
             case 'zi_yi_se':
                 newHand = [
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?),
-                    createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??),
-                    createTile(TILE_TYPES.WIND, '镼?), createTile(TILE_TYPES.WIND, '镼?), createTile(TILE_TYPES.WIND, '镼?),
-                    createTile(TILE_TYPES.DRAGON, '??)
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南'), createTile(TILE_TYPES.WIND, '南'), createTile(TILE_TYPES.WIND, '南'),
+                    createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'),
+                    createTile(TILE_TYPES.DRAGON, '白'), createTile(TILE_TYPES.DRAGON, '白'), createTile(TILE_TYPES.DRAGON, '白'),
+                    createTile(TILE_TYPES.WIND, '西'), createTile(TILE_TYPES.WIND, '西'), createTile(TILE_TYPES.WIND, '西'),
+                    createTile(TILE_TYPES.DRAGON, '發')
                 ];
                 break;
             case 'qing_yi_se':
@@ -1062,19 +1062,19 @@ class MahjongGame {
                 break;
             case 'xiao_si_xi':
                 newHand = [
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '镼?), createTile(TILE_TYPES.WIND, '镼?), createTile(TILE_TYPES.WIND, '镼?),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), // pair
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南'), createTile(TILE_TYPES.WIND, '南'), createTile(TILE_TYPES.WIND, '南'),
+                    createTile(TILE_TYPES.WIND, '西'), createTile(TILE_TYPES.WIND, '西'), createTile(TILE_TYPES.WIND, '西'),
+                    createTile(TILE_TYPES.WIND, '北'), createTile(TILE_TYPES.WIND, '北'), // pair
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1),
                     createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3)
                 ];
                 break;
             case 'xiao_san_yuan':
                 newHand = [
-                    createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?),
-                    createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??),
-                    createTile(TILE_TYPES.DRAGON, '??), createTile(TILE_TYPES.DRAGON, '??), // pair
+                    createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'),
+                    createTile(TILE_TYPES.DRAGON, '發'), createTile(TILE_TYPES.DRAGON, '發'), createTile(TILE_TYPES.DRAGON, '發'),
+                    createTile(TILE_TYPES.DRAGON, '白'), createTile(TILE_TYPES.DRAGON, '白'), // pair
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1),
                     createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 2),
                     createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3)
@@ -1087,7 +1087,7 @@ class MahjongGame {
                     createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1),
                     createTile(TILE_TYPES.BAM, 4), createTile(TILE_TYPES.BAM, 5), createTile(TILE_TYPES.BAM, 6),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東')
                 ];
                 break;
             case 'san_an_ke':
@@ -1097,7 +1097,7 @@ class MahjongGame {
                     createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 2), createTile(TILE_TYPES.DOT, 3),
                     createTile(TILE_TYPES.BAM, 4), createTile(TILE_TYPES.BAM, 5), createTile(TILE_TYPES.BAM, 6),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東')
                 ];
                 break;
             case 'hun_yi_se':
@@ -1106,8 +1106,8 @@ class MahjongGame {
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.CHAR, 7), createTile(TILE_TYPES.CHAR, 8), createTile(TILE_TYPES.CHAR, 9),
                     createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 2),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南')
                 ];
                 break;
             case 'peng_peng_hu':
@@ -1117,12 +1117,12 @@ class MahjongGame {
                     createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1),
                     createTile(TILE_TYPES.BAM, 5), createTile(TILE_TYPES.BAM, 5), createTile(TILE_TYPES.BAM, 5),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東')
                 ];
                 break;
             case 'quan_qiu_ren':
                 newHand = [
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東')
                 ];
                 newMelds = [
                     { type: 'PONG', tiles: [createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 1)] },
@@ -1133,19 +1133,19 @@ class MahjongGame {
                 ];
                 break;
             case 'hai_di':
-                // ?箔?皜祈岫瘚瑕???/瘝喳???嚗?????皜???16 撘蛛?銝虫??潛策?拙振銝???????
+                // 為了測試海底撈月/河底撈魚，我們把牌堆減少到 16 張，並且發給玩家一個準備胡牌的手牌
                 this.deck.splice(0, Math.max(0, this.deck.length - 16));
                 newHand = [
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.CHAR, 7), createTile(TILE_TYPES.CHAR, 8), createTile(TILE_TYPES.CHAR, 9),
                     createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 2),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南')
                 ];
                 break;
             case 'tian_ting':
-                // 蝯虫????賜?????霈摰嗅隞交?摰???賜?皜祈岫
+                // 給一個會聽牌的手牌，讓玩家可以按宣告聽牌測試
                 newHand = [
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
@@ -1156,68 +1156,68 @@ class MahjongGame {
                 ];
                 break;
             case 'dan_ting':
-                // 蝪∪??賜????撐/銝剜?/?桀?嚗?
+                // 簡單的單聽牌型（邊張/中洞/單吊）
                 newHand = [
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.CHAR, 7), createTile(TILE_TYPES.CHAR, 8), createTile(TILE_TYPES.CHAR, 9),
                     createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??) // ?桀??◢
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南') // 單吊南風
                 ];
                 break;
             case 'san_yuan_ke':
                 newHand = [
-                    createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?),
+                    createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'),
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
-                    createTile(TILE_TYPES.WIND, '??)
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
+                    createTile(TILE_TYPES.WIND, '南')
                 ];
                 break;
             case 'men_feng_ke':
-                // 蝣箔????芸楛??憸?
-                const myWind = playerIndex === 0 ? '?? : playerIndex === 1 ? '?? : playerIndex === 2 ? '镼? : '??;
+                // 確保擁有自己的門風
+                const myWind = playerIndex === 0 ? '東' : playerIndex === 1 ? '南' : playerIndex === 2 ? '西' : '北';
                 newHand = [
                     createTile(TILE_TYPES.WIND, myWind), createTile(TILE_TYPES.WIND, myWind), createTile(TILE_TYPES.WIND, myWind),
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1),
-                    createTile(TILE_TYPES.DRAGON, '??) // ?株?賣
+                    createTile(TILE_TYPES.DRAGON, '白') // 單聽白板
                 ];
                 break;
             case 'quan_feng_ke':
-                // 蝣箔????◢?摮?
-                const roundWind = this.wind || '??;
+                // 確保擁有圈風牌刻子
+                const roundWind = this.wind || '東';
                 newHand = [
                     createTile(TILE_TYPES.WIND, roundWind), createTile(TILE_TYPES.WIND, roundWind), createTile(TILE_TYPES.WIND, roundWind),
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 1),
-                    createTile(TILE_TYPES.DRAGON, '??) // ?株?賣
+                    createTile(TILE_TYPES.DRAGON, '白') // 單聽白板
                 ];
                 break;
             case 'zheng_hua':
-                // 蝣箔????芸楛?迤??
-                const FLOWER_NAMES = ['??, '憭?, '蝘?, '??, '璇?, '??, '蝡?, '??];
+                // 確保擁有自己的正花
+                const FLOWER_NAMES = ['春', '夏', '秋', '冬', '梅', '蘭', '竹', '菊'];
                 const myFlower = FLOWER_NAMES[playerIndex];
                 newHand = [
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.BAM, 1), createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 3),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 2), createTile(TILE_TYPES.DOT, 3),
-                    createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?), createTile(TILE_TYPES.DRAGON, '銝?),
-                    createTile(TILE_TYPES.WIND, '??) // ?桀??梢◢
+                    createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'), createTile(TILE_TYPES.DRAGON, '中'),
+                    createTile(TILE_TYPES.WIND, '東') // 單吊東風
                 ];
                 newMelds = [
                     { type: 'FLOWER', tiles: [createTile(TILE_TYPES.FLOWER, myFlower)] }
                 ];
                 break;
             case 'men_qing':
-                // ?皜?/ 銝?訾? / 銝?鈭?
+                // 門清 / 一摸三 / 不求人
                 newHand = [
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
@@ -1226,21 +1226,21 @@ class MahjongGame {
                     createTile(TILE_TYPES.BAM, 4), createTile(TILE_TYPES.BAM, 5),
                     createTile(TILE_TYPES.BAM, 2), createTile(TILE_TYPES.BAM, 2)
                 ];
-                // ??BAM 3, 6 (瘝?隞颱?蝣唳???
+                // 聽 BAM 3, 6 (沒有任何碰槓吃)
                 break;
             case 'gang_shang_kai_hua':
-                // 瑽?? (皜祆???
+                // 槓上開花 (測槓牌)
                 newHand = [
-                    createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??), createTile(TILE_TYPES.WIND, '??),
+                    createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'), createTile(TILE_TYPES.WIND, '東'),
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),
                     createTile(TILE_TYPES.CHAR, 4), createTile(TILE_TYPES.CHAR, 5), createTile(TILE_TYPES.CHAR, 6),
                     createTile(TILE_TYPES.DOT, 1), createTile(TILE_TYPES.DOT, 2), createTile(TILE_TYPES.DOT, 3),
                     createTile(TILE_TYPES.DOT, 7), createTile(TILE_TYPES.DOT, 8), createTile(TILE_TYPES.DOT, 9),
-                    createTile(TILE_TYPES.BAM, 5) // ?桀? BAM 5
+                    createTile(TILE_TYPES.BAM, 5) // 單吊 BAM 5
                 ];
-                // ?曉 5璇?(?踵???, ?亥????梢◢ (霈摰嗅隞交?瑽?
+                // 放入 5條 (替換牌), 接著是 東風 (讓玩家可以暗槓)
                 this.deck.push(createTile(TILE_TYPES.BAM, 5));
-                this.deck.push(createTile(TILE_TYPES.WIND, '??));
+                this.deck.push(createTile(TILE_TYPES.WIND, '東'));
                 break;
             default:
                 break;
@@ -1252,7 +1252,7 @@ class MahjongGame {
                 this.melds[playerIndex] = newMelds;
             }
             if (this.currentTurn === playerIndex && this.hands[playerIndex].length === 16) {
-                // 憒??桀??航府?拙振?????潛策隞洵 17 撘萇?嚗Ⅱ靽??賣迤撣豢???瑽?
+                // 如果目前是該玩家的回合，發給他第 17 張牌，確保他能正常打牌或槓牌
                 this.hands[playerIndex].push(this.deck.pop());
                 this.processFlowers(playerIndex);
             }
