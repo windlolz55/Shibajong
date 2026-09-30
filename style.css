@@ -761,6 +761,25 @@ button.primary:hover {
         --tile-width: clamp(12px, 2vw, 30px);
         --tile-height: clamp(16px, 2.8vw, 40px);
     }
+    
+    /* 修正手機橫向時的聊天視窗大小 */
+    .in-game-chat-panel {
+        bottom: 80px !important;
+        max-height: calc(100vh - 90px);
+        width: 320px;
+    }
+    .game-chat-box {
+        height: 120px !important; /* 縮小訊息列表高度 */
+        min-height: 80px;
+    }
+    .chat-input-row input {
+        height: 36px !important;
+        min-height: 36px !important;
+    }
+    .btn-chat-send {
+        height: 36px !important;
+        min-height: 36px !important;
+    }
 }
 
 @media (orientation: portrait) {
