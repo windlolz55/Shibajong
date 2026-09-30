@@ -1100,6 +1100,8 @@ button#btn-close-chat:hover,
 
 .chat-tab-pane {
     padding: 12px;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .btn-emote-option {
