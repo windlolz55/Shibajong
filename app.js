@@ -7,8 +7,10 @@ const screens = {
     settlement: document.getElementById('settlement-screen')
 };
 
-let progressInterval;
+let progressInterval = null;
 function startLoadingProgress() {
+    // Fix #12: 先清除前一個 interval，避免快速點擊時產生多個 interval
+    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
     const textSpan = document.getElementById('lobby-progress-text');
     const tipDiv = document.getElementById('lobby-wait-tip');
     if(tipDiv) tipDiv.style.display = 'block';
@@ -132,7 +134,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (savedName && UI.playerName) {
             UI.playerName.value = savedName;
         }
-        if (localStorage.getItem('mj_admin_auth') === 'true') {
+        if (sessionStorage.getItem('mj_admin_auth') === 'true') {
             window.isAdmin = true;
             if (UI.adminStatus) UI.adminStatus.style.display = 'block';
         }
@@ -163,7 +165,8 @@ let isMuted = false;
 let currentTimerInterval = null;
 window.isAdmin = false;
 try {
-    if (localStorage.getItem('mj_admin_auth') === 'true') {
+    // Fix #2: 改用 sessionStorage，關閉瀏覽器就自動清除，不會永久保存
+    if (sessionStorage.getItem('mj_admin_auth') === 'true') {
         window.isAdmin = true;
     }
 } catch (e) {}
@@ -184,6 +187,15 @@ try {
 }
 
 // --- Helper Functions ---
+
+// Fix #8: 統一 stakeConfig 顯示文字，避免兩處重複邏輯
+function getStakeConfigDisplay(stakeConfig) {
+    if (stakeConfig === '50_20_1500' || stakeConfig === '50_20_5000') {
+        return { rateText: '50 底 / 20 台', fundText: '$1,500' };
+    }
+    return { rateText: '100 底 / 20 台', fundText: '$3,000' };
+}
+
 function updateVolumeUI(percent) {
     const slider = document.getElementById('volume-slider');
     if (slider && parseInt(slider.value, 10) !== percent) {
@@ -559,7 +571,7 @@ if (UI.btnAdminLogin) {
         if (window.isAdmin) {
             if (confirm('您目前已登入管理員模式。\n要登出管理員身份嗎？')) {
                 window.isAdmin = false;
-                try { localStorage.removeItem('mj_admin_auth'); } catch (e) {}
+                try { sessionStorage.removeItem('mj_admin_auth'); } catch (e) {}
                 if (UI.adminStatus) UI.adminStatus.style.display = 'none';
                 if (UI.adminPanel) UI.adminPanel.style.display = 'none';
                 alert('已登出管理員模式');
@@ -567,17 +579,24 @@ if (UI.btnAdminLogin) {
             return;
         }
         const pw = prompt('請輸入管理員密碼：');
-        if (pw === 'kittenz') {
-            window.isAdmin = true;
-            try { localStorage.setItem('mj_admin_auth', 'true'); } catch (e) {}
-            if (UI.adminStatus) UI.adminStatus.style.display = 'block';
-            alert('管理員模式已啟用，已為您自動儲存登入狀態！');
-            if (network && UI.adminPanel) {
-                UI.adminPanel.style.display = 'flex';
+        if (pw === null) return;
+        // Fix #1: SHA-256 hash 比對，密碼不直接出現在原始碼中
+        (async () => {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+            const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+            // Hash of admin password (SHA-256)
+            if (hash === 'fa52acb94685d075258d10671c9c1dd48b337573200542ecade2784bea1ef840') {
+                window.isAdmin = true;
+                try { sessionStorage.setItem('mj_admin_auth', 'true'); } catch (e) {}
+                if (UI.adminStatus) UI.adminStatus.style.display = 'block';
+                alert('管理員模式已啟用！');
+                if (network && UI.adminPanel) {
+                    UI.adminPanel.style.display = 'flex';
+                }
+            } else {
+                alert('密碼錯誤');
             }
-        } else if (pw !== null) {
-            alert('密碼錯誤');
-        }
+        })();
     });
 }
 
@@ -1006,22 +1025,8 @@ function updatePlayerList(players, settings) {
     }
 
     if (settings) {
-        let roomSettingsDiv = document.getElementById('room-settings-display');
-        if (!roomSettingsDiv) {
-            roomSettingsDiv = document.createElement('div');
-            roomSettingsDiv.id = 'room-settings-display';
-            roomSettingsDiv.style.background = 'rgba(0,0,0,0.3)';
-            roomSettingsDiv.style.padding = '15px';
-            roomSettingsDiv.style.borderRadius = '8px';
-            roomSettingsDiv.style.marginTop = '15px';
-            roomSettingsDiv.style.marginBottom = '15px';
-            roomSettingsDiv.style.textAlign = 'left';
-            
-            const waitingStatus = document.getElementById('waiting-status');
-            if (waitingStatus) {
-                waitingStatus.parentNode.insertBefore(roomSettingsDiv, waitingStatus);
-            }
-        }
+        const roomSettingsDiv = document.getElementById('room-settings-display');
+        if (!roomSettingsDiv) return;
         
         let lengthText = "無限局";
         if (settings.gameLength === '1_round') lengthText = "一圈 (四局)";
@@ -1033,35 +1038,16 @@ function updatePlayerList(players, settings) {
         else if (settings.botSpeed == 5000) speedText = "標準 (5秒)";
         else if (settings.botSpeed == 10000) speedText = "慢 (10秒)";
 
-        let stakeRateText = "100 底 / 20 台";
-        let initialFundText = "$3,000";
-        if (settings.stakeConfig === '50_20_1500' || settings.stakeConfig === '50_20_5000') {
-            stakeRateText = "50 底 / 20 台";
-            initialFundText = "$1,500";
-        } else if (settings.stakeConfig === '100_20_3000' || settings.stakeConfig === '100_20_10000') {
-            stakeRateText = "100 底 / 20 台";
-            initialFundText = "$3,000";
-        }
-        
-        roomSettingsDiv.innerHTML = `
-            <h3 style="margin-top: 0; margin-bottom: 12px; color: #cbd5e1; font-size: 1.05rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">房間設定</h3>
-            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
-                <span>底台設定：</span>
-                <span style="color: #4ade80; font-weight: bold;">${stakeRateText}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
-                <span>初始資金：</span>
-                <span style="color: #facc15; font-weight: bold;">${initialFundText}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
-                <span>出牌時間：</span>
-                <span style="color: #fff; font-weight: bold;">${speedText}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin: 6px 0; color: #94a3b8; font-size: 0.9rem;">
-                <span>遊戲長度：</span>
-                <span style="color: #fff; font-weight: bold;">${lengthText}</span>
-            </div>
-        `;
+        const { rateText, fundText } = getStakeConfigDisplay(settings.stakeConfig);
+
+        const stakeEl = document.getElementById('display-room-stake');
+        const fundEl = document.getElementById('display-room-funds');
+        const speedEl = document.getElementById('display-room-speed');
+        const lengthEl = document.getElementById('display-room-length');
+        if (stakeEl) stakeEl.innerText = rateText;
+        if (fundEl) fundEl.innerText = fundText;
+        if (speedEl) speedEl.innerText = speedText;
+        if (lengthEl) lengthEl.innerText = lengthText;
         roomSettingsDiv.style.display = 'block';
     }
 }

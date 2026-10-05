@@ -15,10 +15,26 @@ if (typeof MahjongGame !== 'undefined') {
 
         // 計算需要的組合數 (以手牌數量為準，避免 melds 數量計算錯誤)
         let setsNeeded = Math.floor(handCopy.length / 3);
-        return this.isHuPattern(counts, setsNeeded, false);
+        // 每次調用都建立一個新的 memo Map，避免跨手牌汙染
+        this._huMemo = new Map();
+        const result = this.isHuPattern(counts, setsNeeded, false);
+        this._huMemo = null;
+        return result;
     },
 
     isHuPattern(counts, setsNeeded, hasPair) {
+        // 建立目前狀態的 key 來做 memoization
+        if (this._huMemo) {
+            const key = Object.entries(counts).filter(([,v]) => v > 0).sort().join('|') + `_${setsNeeded}_${hasPair}`;
+            if (this._huMemo.has(key)) return this._huMemo.get(key);
+            const result = this._computeHuPattern(counts, setsNeeded, hasPair);
+            this._huMemo.set(key, result);
+            return result;
+        }
+        return this._computeHuPattern(counts, setsNeeded, hasPair);
+    },
+
+    _computeHuPattern(counts, setsNeeded, hasPair) {
         const keys = Object.keys(counts).filter(k => counts[k] > 0).sort();
         if (keys.length === 0) return setsNeeded === 0 && hasPair;
 
@@ -52,6 +68,7 @@ if (typeof MahjongGame !== 'undefined') {
         }
         return false;
     },
+
 
     getAllTileTypes() {
         let types = [];
@@ -131,11 +148,16 @@ if (typeof MahjongGame !== 'undefined') {
         
         // 3. 獨聽
         // 此時手牌(hand)已經包含最後那張胡牌(總長17張或以上)，我們必須先把最後一張移除，才能正確計算他原本在聽什麼牌
-        const originalHand = [...hand];
-        originalHand.pop();
-        this.hands[playerIndex] = originalHand;
-        let waitTiles = this.getWaitTiles(playerIndex);
-        this.hands[playerIndex] = hand; // 算完再加回來
+        // 使用 try/finally 確保即使發生錯誤，this.hands 也一定會被還原，避免狀態損毀
+        const handForTenpai = [...hand];
+        handForTenpai.pop();
+        this.hands[playerIndex] = handForTenpai;
+        let waitTiles;
+        try {
+            waitTiles = this.getWaitTiles(playerIndex);
+        } finally {
+            this.hands[playerIndex] = hand; // 無論如何都還原
+        }
         
         if (waitTiles.length === 1) {
             details.push({ name: '單聽', tai: 1 });

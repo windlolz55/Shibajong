@@ -626,14 +626,25 @@ class MahjongGame {
         }
         
         if (this.gameState === 'PLAYING' || this.gameState === 'WAIT_ACTION') {
+            if (!this._waitTilesCache) this._waitTilesCache = [null, null, null, null];
+            if (!this._handKeys) this._handKeys = ['', '', '', ''];
+            
             for (let i = 0; i < 4; i++) {
-                if (this.currentTurn === i && this.hands[i].length % 3 === 2) {
-                    // 如果是該玩家的回合 (手牌有 17 張或 14 張等)，暫時移出最後摸的牌來算聽牌
-                    const tempTile = this.hands[i].pop();
-                    waitTilesList[i] = this.getWaitTiles(i);
-                    this.hands[i].push(tempTile);
+                // 用手牌的 ID 串做 fingerprint，沒有變動的話直接用 cache
+                const handKey = this.hands[i].map(t => t.id).join(',');
+                if (this._handKeys[i] === handKey && this._waitTilesCache[i]) {
+                    waitTilesList[i] = this._waitTilesCache[i];
                 } else {
-                    waitTilesList[i] = this.getWaitTiles(i);
+                    if (this.currentTurn === i && this.hands[i].length % 3 === 2) {
+                        // 如果是該玩家的回合 (手牌有 17 張)，暫時移出最後摸的牌來算聽牌
+                        const tempTile = this.hands[i].pop();
+                        waitTilesList[i] = this.getWaitTiles(i);
+                        this.hands[i].push(tempTile);
+                    } else {
+                        waitTilesList[i] = this.getWaitTiles(i);
+                    }
+                    this._waitTilesCache[i] = waitTilesList[i];
+                    this._handKeys[i] = handKey;
                 }
             }
         }
@@ -875,7 +886,7 @@ class MahjongGame {
                 break;
             case 'quan_feng_ke':
                 // 確保擁有圈風牌刻子
-                const roundWind = this.wind || '東';
+                const roundWind = WIND_NAMES[this.roundWind % 4];
                 newHand = [
                     createTile(TILE_TYPES.WIND, roundWind), createTile(TILE_TYPES.WIND, roundWind), createTile(TILE_TYPES.WIND, roundWind),
                     createTile(TILE_TYPES.CHAR, 1), createTile(TILE_TYPES.CHAR, 2), createTile(TILE_TYPES.CHAR, 3),

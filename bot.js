@@ -86,7 +86,10 @@ if (typeof MahjongGame !== 'undefined') {
                 if (danger > 80 && Math.random() < 0.5) return { actionStr: 'SKIP', data: null }; // Basic defense hesitation
 
                 if (pendingAction.canPong) actionStr = 'PONG';
-                else if (pendingAction.canChow) { actionStr = 'CHOW'; data = pendingAction.canChow[0]; }
+                else if (pendingAction.canChow) {
+                    actionStr = 'CHOW';
+                    data = this._pickBestChow(pendingAction.playerIndex, pendingAction.canChow);
+                }
             } else if (difficulty === 'hard') {
                 let tile = this.discardPool[this.discardPool.length - 1];
                 let danger = this.calculateTileDanger(tile, pendingAction.playerIndex);
@@ -98,7 +101,7 @@ if (typeof MahjongGame !== 'undefined') {
                 else if (pendingAction.canChow) {
                     // Pick chow that leaves best weight
                     actionStr = 'CHOW';
-                    data = pendingAction.canChow[0];
+                    data = this._pickBestChow(pendingAction.playerIndex, pendingAction.canChow);
                 }
             }
             return { actionStr, data };
@@ -156,6 +159,24 @@ if (typeof MahjongGame !== 'undefined') {
             }
 
             return { tileId: tileToDiscard.id };
+        },
+        // 選出最有利的吃牌選項（讓剩餘手牌總 weight 最高）
+        _pickBestChow(playerIndex, chowOptions) {
+            if (!chowOptions || chowOptions.length <= 1) return chowOptions ? chowOptions[0] : null;
+            const hand = this.hands[playerIndex];
+            let bestChow = chowOptions[0];
+            let bestWeight = -1;
+            for (const option of chowOptions) {
+                const id0 = option[0].id;
+                const id1 = option[1].id;
+                const tempHand = hand.filter(t => t.id !== id0 && t.id !== id1);
+                const totalWeight = tempHand.reduce((sum, t) => sum + this.evaluateTileWeight(tempHand, t), 0);
+                if (totalWeight > bestWeight) {
+                    bestWeight = totalWeight;
+                    bestChow = option;
+                }
+            }
+            return bestChow;
         }
     });
 }
