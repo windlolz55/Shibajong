@@ -27,6 +27,7 @@ body {
     background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
     color: var(--text-main);
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -37,6 +38,7 @@ body {
 #app {
     width: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -46,6 +48,7 @@ body {
 .screen {
     width: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -53,7 +56,13 @@ body {
     position: absolute;
     top: 0;
     left: 0;
+    padding: 12px;
     transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#game-screen {
+    padding: 0;
+    overflow: hidden;
 }
 
 .screen.hidden {
@@ -90,13 +99,15 @@ body {
 }
 
 #settlement-screen .card {
-    max-height: 85vh;
+    max-height: 88vh;
+    max-height: 88dvh;
+    width: min(94vw, 550px);
     max-width: 550px;
     overflow-y: auto;
     border: 2px solid #f59e0b;
     box-shadow: 0 0 30px rgba(245, 158, 11, 0.5);
     background: rgba(15, 23, 42, 0.95);
-    padding: 20px;
+    padding: clamp(14px, 3.5vw, 22px);
 }
 
 .settlement-hand-display {
@@ -205,6 +216,7 @@ button.primary:hover {
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     background: radial-gradient(circle at center, #166534 0%, #064e3b 100%);
     box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
     display: flex;
@@ -221,21 +233,40 @@ button.primary:hover {
     justify-content: center;
     user-select: none;
     padding: 2px;
+    z-index: 10;
 }
-.bottom-player { bottom: 20px; left: 50%; transform: translateX(-50%); }
-.top-player { top: 20px; left: 50%; transform: translateX(-50%); }
-.left-player { left: 20px; top: 50%; transform: translateY(-50%); flex-direction: row; }
-.right-player { right: 20px; top: 50%; transform: translateY(-50%); flex-direction: row-reverse; }
+.bottom-player {
+    bottom: max(12px, env(safe-area-inset-bottom, 12px));
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+.top-player {
+    top: max(14px, env(safe-area-inset-top, 14px));
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+.bottom-player .hand,
+.top-player .hand {
+    flex-basis: 100%;
+    width: 100%;
+}
+.left-player { left: max(12px, env(safe-area-inset-left, 12px)); top: 50%; transform: translateY(-50%); flex-direction: row; }
+.right-player { right: max(12px, env(safe-area-inset-right, 12px)); top: 50%; transform: translateY(-50%); flex-direction: row-reverse; }
 
 .player-info {
-    background: rgba(0, 0, 0, 0.5); padding: 5px 15px; border-radius: 20px;
-    margin: 5px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0, 0, 0, 0.55); padding: 5px 14px; border-radius: 20px;
+    margin: 4px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.2);
 }
 
 /* Meld Area (明牌區) */
-.meld-area { display: flex; gap: 10px; margin: 5px; min-height: calc(var(--tile-height) * 0.6); }
-.left-player .meld-area, .right-player .meld-area { flex-direction: column; }
-.meld-group { display: flex; gap: 2px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 6px; }
+.meld-area { display: flex; gap: 8px; margin: 4px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.meld-area:empty { display: none; }
+.left-player .meld-area, .right-player .meld-area { flex-direction: column; flex-wrap: nowrap; }
+.meld-group { display: flex; gap: 2px; background: rgba(0,0,0,0.3); padding: 3px; border-radius: 6px; }
 .left-player .meld-group, .right-player .meld-group { flex-direction: column; }
 
 /* Hand layout */
@@ -325,18 +356,51 @@ button.primary:hover {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.22);
     border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
     z-index: 5;
     padding: 10px;
+}
+
+.round-info-text {
+    position: absolute;
+    bottom: 10px;
+    left: 14px;
+    color: #60a5fa;
+    font-size: 1.05rem;
+    font-weight: bold;
+    pointer-events: none;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    z-index: 2;
+}
+
+.current-turn-indicator,
+#current-turn-indicator {
+    font-weight: bold;
+    font-size: clamp(0.95rem, 2.5vw, 1.35rem);
+    text-align: center;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    color: #facc15;
+    line-height: 1.3;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.turn-timer,
+#turn-timer {
+    color: #ef4444;
+    font-size: clamp(1.1rem, 3vw, 1.75rem);
+    margin-left: 8px;
+    display: inline-block;
+    min-width: 24px;
 }
 
 #game-info {
     background: rgba(0, 0, 0, 0.6); padding: clamp(5px, 2vw, 15px) clamp(10px, 3vw, 30px); border-radius: 15px;
     text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px);
 }
-#current-turn-indicator { font-size: clamp(1rem, 3vw, 1.2rem); font-weight: bold; color: #facc15; margin-top: 5px; }
 
 .discard-pool {
     display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center;
@@ -487,7 +551,8 @@ button.primary:hover {
     border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
 }
 
-.tai-tooltip:hover .tai-tooltip-text {
+.tai-tooltip:hover .tai-tooltip-text,
+.tai-tooltip.active .tai-tooltip-text {
     visibility: visible;
     opacity: 1;
     bottom: 125%;
@@ -611,29 +676,71 @@ button.primary:hover {
     background: #7dd3fc;
 }
 
-.top-right-controls { gap: 10px; }
+.top-right-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
 .circle-btn {
     position: absolute;
-    background: rgba(15,23,42,0.8);
+    background: rgba(15,23,42,0.85);
     border: 1px solid;
     width: 40px;
     height: 40px;
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: 1.2rem;
-    cursor: pointer; font-weight: bold; z-index: 100;
+    cursor: pointer; font-weight: bold; z-index: 150;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+#btn-tai-ref {
+    bottom: 20px;
+    left: 20px;
+    color: #facc15;
+    border-color: #facc15;
+}
+
+#btn-emote {
+    bottom: 72px;
+    left: 20px;
+    color: #38bdf8;
+    border-color: #38bdf8;
+}
+
+.tai-ref-panel {
+    position: absolute;
+    bottom: 70px;
+    left: 20px;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid #475569;
+    padding: 15px;
+    border-radius: 10px;
+    color: #fff;
+    z-index: 250;
+    width: 320px;
+    max-width: calc(100vw - 24px);
+    max-height: 60vh;
+    max-height: 60dvh;
+    overflow-y: auto;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.85);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 .tenpai-hint {
     display: flex; position: absolute;
-    right: 30px;
-    bottom: 30px;
-    background: rgba(0,0,0,0.85); border: 1px solid #facc15;
-    padding: 15px; border-radius: 8px; color: #fff; z-index: 100; text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5); flex-direction: column; gap: 10px;
-    min-width: 150px;
-    max-height: 350px;
+    right: 24px;
+    bottom: 20px;
+    background: rgba(15, 23, 42, 0.88); border: 1px solid #facc15;
+    padding: 10px 14px; border-radius: 10px; color: #fff; z-index: 120; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); flex-direction: column; gap: 8px;
+    min-width: 120px;
+    max-height: 320px;
     overflow-y: auto;
 }
 
@@ -646,11 +753,35 @@ button.primary:hover {
 }
 
 .tenpai-title {
-    color:#facc15; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px;
-    border-bottom: 1px solid rgba(250,204,21,0.3); padding-bottom: 5px;
+    color:#facc15; font-size: 0.95rem; font-weight: bold; letter-spacing: 2px;
+    border-bottom: 1px solid rgba(250,204,21,0.3); padding-bottom: 4px;
 }
-.tenpai-tiles-container { display:flex; gap: 8px; align-items:flex-start; flex-wrap: wrap; justify-content: center; max-width: 250px; }
-.tenpai-empty { color:#94a3b8; font-size: 0.9rem; padding: 10px; }
+.tenpai-tiles-container { display:flex; gap: 6px; align-items:flex-start; flex-wrap: wrap; justify-content: center; max-width: 240px; }
+.tenpai-empty { color:#94a3b8; font-size: 0.85rem; padding: 4px 8px; white-space: nowrap; }
+
+.tenpai-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+.tenpai-tile-box {
+    width: 28px;
+    height: 38px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #94a3b8;
+    background-color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px;
+}
+.tenpai-tile-label {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    white-space: nowrap;
+}
 
 /* Override tile size for tenpai hint to be smaller */
 .tenpai-hint {
@@ -660,31 +791,45 @@ button.primary:hover {
 
 @media (max-width: 1000px) {
     :root {
-        --my-tile-width: clamp(22px, 6vmin, 56px);
-        --my-tile-height: clamp(30px, 8vmin, 76px);
-        --tile-width: clamp(12px, 3vmin, 36px);
-        --tile-height: clamp(16px, 4vmin, 48px);
+        --my-tile-width: clamp(22px, 5.8vmin, 52px);
+        --my-tile-height: clamp(30px, 7.8vmin, 70px);
+        --tile-width: clamp(14px, 3.2vmin, 34px);
+        --tile-height: clamp(19px, 4.3vmin, 46px);
+    }
+    .card, .player-list-container {
+        padding: clamp(1.1rem, 4vw, 2rem);
+        width: min(94vw, 440px);
+        max-width: 94vw;
+    }
+    input[type="text"],
+    select {
+        font-size: 16px !important; /* 防止手機瀏覽器點擊輸入框時自動放大畫面 */
     }
     .center-area {
-        width: clamp(200px, 45vw, 500px);
-        height: clamp(200px, 45vh, 400px);
-        --tile-width: clamp(10px, 2.5vmin, 28px);
-        --tile-height: clamp(14px, 3.5vmin, 38px);
+        width: clamp(190px, 44vw, 460px);
+        height: clamp(160px, 42dvh, 360px);
+        --tile-width: clamp(12px, 2.8vmin, 26px);
+        --tile-height: clamp(16px, 3.8vmin, 36px);
+        padding: 6px;
     }
     
     .top-ui-box {
-        padding: 4px 6px;
-        font-size: 0.7rem;
+        top: max(6px, env(safe-area-inset-top, 6px));
+        left: max(8px, env(safe-area-inset-left, 8px));
+        padding: 4px 8px;
+        font-size: 0.72rem;
+        border-radius: 8px;
     }
     .control-btn, .control-btn-red {
-        padding: 2px 4px !important;
-        font-size: 0.6rem !important;
-        height: auto;
+        padding: 3px 6px !important;
+        font-size: 0.68rem !important;
+        height: 28px;
+        border-radius: 6px;
     }
     #btn-back-home {
         min-width: unset !important;
-        width: 32px !important;
-        height: 32px !important;
+        width: 28px !important;
+        height: 28px !important;
         padding: 0 !important;
         display: flex;
         justify-content: center;
@@ -694,17 +839,17 @@ button.primary:hover {
     .volume-control-box {
         padding: 0 4px 0 2px !important;
         gap: 3px !important;
-        height: 32px;
+        height: 28px;
     }
     .volume-control-box #btn-toggle-mute {
         min-width: unset !important;
-        width: 26px !important;
-        height: 26px !important;
-        font-size: 0.9rem !important;
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 0.85rem !important;
         padding: 0 !important;
     }
     .volume-slider {
-        width: 48px !important;
+        width: 44px !important;
         height: 4px !important;
     }
     .volume-slider::-webkit-slider-thumb {
@@ -716,61 +861,151 @@ button.primary:hover {
         height: 11px !important;
     }
     .top-right-controls { 
-        top: 10px !important;
-        right: 10px !important;
+        top: max(6px, env(safe-area-inset-top, 6px)) !important;
+        right: max(8px, env(safe-area-inset-right, 8px)) !important;
         gap: 4px !important; 
-        flex-wrap: wrap; 
+        flex-wrap: nowrap; 
         justify-content: flex-end;
-        max-width: 70vw;
+        max-width: 72vw;
     }
     
     .circle-btn {
-        width: clamp(30px, 8vw, 40px);
-        height: clamp(30px, 8vw, 40px);
-        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
     }
     
     .tenpai-hint {
-        --tile-width: 16px;
-        --tile-height: 22px;
-        right: 10px;
-        bottom: 10px;
-        padding: 4px 6px;
-        min-width: 60px;
-        max-height: 180px;
+        --tile-width: 18px;
+        --tile-height: 24px;
+        right: 8px;
+        bottom: 8px;
+        padding: 5px 8px;
+        min-width: 0;
+        max-height: 160px;
+        gap: 4px;
     }
-    .tenpai-title { font-size: 0.75rem; padding-bottom: 2px; }
-    .tenpai-empty { font-size: 0.7rem; padding: 2px; }
-    .action-popup { font-size: clamp(2rem, 8vw, 4rem); }
+    .tenpai-title { font-size: 0.72rem; padding-bottom: 2px; letter-spacing: 1px; }
+    .tenpai-empty { font-size: 0.68rem; padding: 1px 4px; }
+    .tenpai-tile-box { width: 20px; height: 28px; }
+    .tenpai-tile-label { font-size: 0.65rem; }
+    .tenpai-tiles-container { gap: 4px; max-width: 170px; }
+
+    /* 未聽牌時在手機上縮小成單行膠囊，節省牌桌空間 */
+    .tenpai-hint:not(.is-tenpai) .tenpai-title {
+        display: none;
+    }
+    .tenpai-hint:not(.is-tenpai) {
+        padding: 3px 8px;
+        border-color: rgba(250, 204, 21, 0.4);
+        opacity: 0.75;
+    }
+
+    .action-popup { font-size: clamp(2rem, 8vw, 3.5rem); }
 
     .hide-on-mobile {
         display: none !important;
     }
     .player-info {
-        padding: 2px 6px; font-size: 0.7rem; margin: 2px;
-        max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        padding: 2px 8px;
+        font-size: 0.72rem;
+        margin: 2px;
+        max-width: 130px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .action-bar {
+        padding: 4px 10px 10px 10px;
+        border-radius: 12px;
+    }
+    .action-buttons {
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .action-btn {
+        padding: 8px 14px;
+        font-size: 0.95rem;
+    }
+    .chow-options {
+        gap: 8px;
+        padding: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 90vw;
     }
 }
 
 @media (max-width: 1000px) and (orientation: landscape) {
     :root {
-        /* Maximize hand in landscape safely, accounting for the 17th drawn tile gap. */
-        --my-tile-width: clamp(28px, 3.9vw, 56px);
-        --my-tile-height: clamp(38px, 5.5vw, 76px);
-        /* Make opponent tiles much smaller in landscape to prevent any overlap */
-        --tile-width: clamp(12px, 2vw, 30px);
-        --tile-height: clamp(16px, 2.8vw, 40px);
+        /* 橫向模式最大化自家手牌，同時保留第17張摸牌間距不超出螢幕 */
+        --my-tile-width: clamp(26px, 4.1vw, 48px);
+        --my-tile-height: clamp(35px, 5.6vw, 65px);
+        /* 縮小對手牌尺寸，避免橫向窄高度時上下重疊 */
+        --tile-width: clamp(12px, 1.9vw, 24px);
+        --tile-height: clamp(16px, 2.6vw, 33px);
+    }
+
+    .top-player {
+        top: 4px;
+    }
+    .bottom-player {
+        bottom: 4px;
+    }
+    .left-player {
+        left: max(6px, env(safe-area-inset-left, 6px));
+    }
+    .right-player {
+        right: max(6px, env(safe-area-inset-right, 6px));
+    }
+
+    .center-area {
+        width: clamp(220px, 44vw, 420px);
+        height: clamp(130px, 44dvh, 230px);
+        padding: 6px 8px;
+    }
+    .current-turn-indicator,
+    #current-turn-indicator {
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+    }
+    .turn-timer,
+    #turn-timer {
+        font-size: 1.05rem;
+    }
+    .round-info-text {
+        font-size: 0.78rem;
+        bottom: 4px;
+        left: 8px;
+    }
+
+    #btn-tai-ref {
+        bottom: 8px;
+        left: max(8px, env(safe-area-inset-left, 8px));
+    }
+    #btn-emote {
+        bottom: 48px;
+        left: max(8px, env(safe-area-inset-left, 8px));
+    }
+    .tai-ref-panel {
+        bottom: 48px;
+        left: max(8px, env(safe-area-inset-left, 8px));
+        max-height: calc(100dvh - 58px);
     }
     
     /* 修正手機橫向時的聊天視窗大小 */
     .in-game-chat-panel {
-        bottom: 80px !important;
-        max-height: calc(100vh - 90px);
-        width: 320px;
+        bottom: 48px !important;
+        max-height: calc(100dvh - 58px);
+        width: 310px;
     }
     .game-chat-box {
-        height: 120px !important; /* 縮小訊息列表高度 */
-        min-height: 80px;
+        height: 110px !important;
+        min-height: 75px;
     }
     .chat-input-row input {
         height: 36px !important;
@@ -784,49 +1019,206 @@ button.primary:hover {
 
 @media (orientation: portrait) {
     :root {
-        /* 9 tiles per row max fits 17 tiles exactly into 2 rows (approx 10vw per tile) */
-        --my-tile-width: 10vw;
-        --my-tile-height: 13.5vw;
-        --tile-width: 5vw;
-        --tile-height: 7vw;
+        /* 9 tiles per row max fits 17 tiles cleanly into 2 rows */
+        --my-tile-width: calc((96vw - 24px) / 9);
+        --my-tile-height: calc(((96vw - 24px) / 9) * 1.35);
+        --tile-width: clamp(14px, 3.8vw, 22px);
+        --tile-height: clamp(19px, 5.2vw, 30px);
     }
-    .center-area {
-        width: clamp(160px, 40vw, 300px);
-        height: clamp(160px, 40vh, 300px);
+
+    /* 頂部控制列精簡化，避免與對家重疊 */
+    .top-ui-box {
+        top: max(6px, env(safe-area-inset-top, 6px));
+        left: 6px;
+        padding: 3px 7px;
+        font-size: 0.68rem;
     }
-    .bottom-player .hand {
-        flex-wrap: wrap-reverse;
-        width: 95vw;
-        max-width: 95vw;
-        justify-content: center;
+    .top-right-controls {
+        top: max(6px, env(safe-area-inset-top, 6px)) !important;
+        right: 6px !important;
+        gap: 3px !important;
+        max-width: calc(100vw - 95px);
     }
-    /* Strictly force maximum 9 tiles per row so that 16-17 tiles perfectly form 2 rows */
-    .bottom-player .my-hand .tile {
-        flex: 0 0 calc(95vw / 9 - 4px) !important;
-        width: calc(95vw / 9 - 4px) !important;
-        height: calc((95vw / 9 - 4px) * 1.35) !important;
+    /* 直向時隱藏滑桿軌道，僅保留靜音切換按鈕節省頂部寬度 */
+    .volume-slider-wrapper {
+        display: none !important;
+    }
+    .volume-control-box {
+        padding: 0 2px !important;
+    }
+
+    /* 對家下移至頂部工具列下方，完全避開左上方剩餘牌數與右上方選單 */
+    .top-player {
+        top: calc(max(6px, env(safe-area-inset-top, 6px)) + 34px);
+        width: 92vw;
+        max-width: 92vw;
     }
     .top-player .hand {
         flex-wrap: wrap;
-        max-width: 95vw;
+        max-width: 88vw;
         justify-content: center;
     }
-    /* Stack player info and hand vertically to prevent horizontal squeezing of the center table */
-    .left-player, .right-player {
-        flex-direction: column;
+
+    /* 左右家緊貼兩側，玩家資訊置頂、手牌與吃碰槓並排，避免垂直過高衝出畫面 */
+    .left-player,
+    .right-player {
+        top: 36% !important;
+        transform: translateY(-50%);
+        flex-direction: row;
+        flex-wrap: wrap;
         align-items: center;
+        justify-content: center;
+        max-width: 18vw;
     }
-    
-    /* Shift the entire game table up to create breathing room for the bottom UI */
-    .center-area, .left-player, .right-player {
-        top: 32% !important;
+    .left-player {
+        left: 2px;
+    }
+    .right-player {
+        right: 2px;
+        flex-direction: row-reverse;
+    }
+    .left-player .player-info,
+    .right-player .player-info {
+        flex: 0 0 100%;
+        max-width: 68px;
+        font-size: 0.62rem;
+        padding: 2px 4px;
+        flex-direction: column;
+        gap: 0;
+        text-align: center;
+        line-height: 1.15;
+    }
+    .left-player .hand .hidden-tile,
+    .right-player .hand .hidden-tile {
+        width: clamp(13px, 3.6vw, 18px);
+        height: clamp(9px, 2.4vw, 13px);
+    }
+    .left-player .hand,
+    .right-player .hand {
+        gap: 1px;
+    }
+    .left-player .meld-area,
+    .right-player .meld-area {
+        gap: 3px;
+        margin: 2px;
     }
 
-    /* Place UI elements just above the bottom hand */
-    #btn-tai-ref { bottom: 170px !important; }
-    #btn-emote { bottom: 220px !important; }
-    #chat-panel, #emote-panel { bottom: 270px !important; }
-    .tenpai-hint { bottom: 170px !important; right: 10px !important; }
+    /* 中央牌河區域 */
+    .center-area {
+        top: 36% !important;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: clamp(175px, 60vw, 290px);
+        height: clamp(165px, 27dvh, 250px);
+        padding: 6px;
+        --tile-width: clamp(16px, 4.4vw, 24px);
+        --tile-height: clamp(22px, 6vw, 33px);
+    }
+    .center-area .discard-tile {
+        width: var(--tile-width);
+        height: var(--tile-height);
+    }
+    .current-turn-indicator,
+    #current-turn-indicator {
+        font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+        margin-bottom: 4px;
+        white-space: normal;
+    }
+    .turn-timer,
+    #turn-timer {
+        font-size: clamp(0.95rem, 3.8vw, 1.2rem);
+        margin-left: 4px;
+    }
+    .round-info-text {
+        font-size: 0.72rem;
+        bottom: 4px;
+        left: 8px;
+    }
+
+    /* 自家底部手牌區：正向 wrap 排成整齊兩排，每排最多 9 張，第 17 張摸牌永遠在右下角不擠成第 3 排 */
+    .bottom-player {
+        bottom: max(6px, env(safe-area-inset-bottom, 6px));
+        width: 98vw;
+        max-width: 98vw;
+    }
+    .bottom-player .player-info {
+        max-width: 220px;
+        font-size: 0.76rem;
+        padding: 3px 10px;
+    }
+    .bottom-player .meld-area {
+        gap: 4px;
+        margin: 2px 4px;
+    }
+    .bottom-player .meld-tile {
+        width: clamp(18px, 4.8vw, 26px);
+        height: clamp(25px, 6.6vw, 35px);
+    }
+    .bottom-player .hand {
+        flex-wrap: wrap;
+        width: 96vw;
+        max-width: 96vw;
+        justify-content: center;
+        gap: 2px;
+    }
+    .bottom-player .my-hand .tile {
+        flex: 0 0 calc((96vw - 24px) / 9) !important;
+        width: calc((96vw - 24px) / 9) !important;
+        height: calc(((96vw - 24px) / 9) * 1.35) !important;
+    }
+    .player-area.bottom-player .drawn-tile {
+        margin-left: 6px;
+    }
+
+    /* 將功能按鈕與聽牌提示固定在自家手牌正上方左右兩側，不遮擋手牌也不擋牌河 */
+    #btn-tai-ref {
+        bottom: calc(max(6px, env(safe-area-inset-bottom, 6px)) + 34vw + 34px) !important;
+        left: 8px !important;
+    }
+    #btn-emote {
+        bottom: calc(max(6px, env(safe-area-inset-bottom, 6px)) + 34vw + 34px) !important;
+        left: 48px !important;
+    }
+    .tai-ref-panel,
+    #chat-panel,
+    #emote-panel {
+        bottom: calc(max(6px, env(safe-area-inset-bottom, 6px)) + 34vw + 74px) !important;
+        left: 8px !important;
+        max-height: 45dvh !important;
+    }
+    .tenpai-hint {
+        bottom: calc(max(6px, env(safe-area-inset-bottom, 6px)) + 34vw + 34px) !important;
+        right: 8px !important;
+        max-width: calc(100vw - 105px);
+        max-height: 95px;
+    }
+    .tenpai-tiles-container {
+        max-width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+
+    /* 結算畫面手機直向適配 */
+    .settlement-hand-display .tile {
+        width: clamp(20px, 5.5vw, 28px);
+        height: clamp(27px, 7.5vw, 38px);
+    }
+    .settlement-hand-display .drawn-tile {
+        margin-left: 8px !important;
+    }
+}
+
+/* 觸控裝置取消手牌 hover 上浮殘留，改用 active 按壓回饋 */
+@media (hover: none) and (pointer: coarse) {
+    .my-hand .tile:hover {
+        transform: none;
+        background: #ffffff;
+    }
+    .my-hand .tile:active {
+        transform: translateY(-6px) scale(1.04);
+        background: #fef08a;
+    }
 }
 
 /* === Chat Room & Unread Badge Styles === */

@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" href="icon-192.png" type="image/png">
     
-    <link rel="stylesheet" href="style.css?v=3.11">
+    <link rel="stylesheet" href="style.css?v=3.12">
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap'); </style>
     <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
@@ -90,7 +90,7 @@
                     <input type="text" id="room-code-input" placeholder="輸入房間代碼">
                     <button id="btn-join-room" class="secondary" style="margin-top: 10px;">🔗 加入房間</button>
                     <div id="version-display" style="text-align: center; margin-top: 15px; font-size: 12px; color: #888;">
-                        當前版本：v3.11<br>made by Kittenz
+                        當前版本：v3.12<br>made by Kittenz
                         <div style="margin-top: 10px;">
                             <button id="btn-admin-login" style="background:transparent; border:none; color:rgba(255,255,255,0.2); cursor:pointer; font-size: 10px;">🔒</button>
                         </div>
@@ -295,7 +295,7 @@
             </div>
 
             <!-- 右上角控制區 -->
-            <div class="top-right-controls" style="position: absolute; top: 20px; right: 20px; z-index: 200; display: flex;">
+            <div class="top-right-controls">
                 <select class="control-btn" id="game-speed-select">
                     <option value="0">你是0 (0秒)</option>
                     <option value="3000">極速 (3秒)</option>
@@ -358,10 +358,10 @@
                 </div>
 
                 <div class="center-area">
-                    <div id="round-info-text" style="position: absolute; bottom: 15px; left: 20px; color:#60a5fa; font-size: 1.2rem; font-weight: bold;"></div>
-                    <div id="current-turn-indicator" style="font-weight: bold; font-size: 1.5rem; text-align:center; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); color: #fff; white-space: nowrap;">
+                    <div id="round-info-text" class="round-info-text"></div>
+                    <div id="current-turn-indicator" class="current-turn-indicator">
                         <span id="turn-text">等待開始...</span>
-                        <span id="turn-timer" style="color:#ef4444; font-size:2rem; margin-left:15px; display:inline-block; min-width:40px;"></span>
+                        <span id="turn-timer" class="turn-timer"></span>
                     </div>
                     <div class="discard-pool" id="discard-pool"></div>
                 </div>
@@ -392,10 +392,10 @@
             </div>
             
             <!-- 台數表 UI -->
-            <button class="circle-btn" id="btn-tai-ref" style="bottom: 20px; left: 20px; color: #facc15; border-color: #facc15;">📜</button>
+            <button class="circle-btn" id="btn-tai-ref">📜</button>
             
             <!-- 表情與聊天按鈕 UI -->
-            <button class="circle-btn" id="btn-emote" style="bottom: calc(30px + clamp(30px, 8vw, 40px)); left: 20px; color: #38bdf8; border-color: #38bdf8; position: absolute;">
+            <button class="circle-btn" id="btn-emote">
                 💬
                 <span id="chat-unread-badge" class="chat-unread-badge" style="display: none;">0</span>
             </button>
@@ -442,7 +442,7 @@
                 </div>
             </div>
             
-            <div id="tai-ref-panel" style="position: absolute; bottom: 70px; left: 20px; background: rgba(0,0,0,0.9); border: 1px solid #475569; padding: 15px; border-radius: 8px; color: #fff; z-index: 200; width: 320px; max-height: 60vh; overflow-y: auto; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.8); font-size: 0.85rem; line-height: 1.4;">
+            <div id="tai-ref-panel" class="tai-ref-panel" style="display: none;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #475569; padding-bottom: 10px; margin-bottom: 10px; width: 100%;">
                     <h3 style="margin:0; color:#38bdf8; font-size: 1.1rem; white-space: nowrap; text-align: left; flex-grow: 1;">麻將台數表</h3>
                     <button id="btn-close-tai" style="background:transparent; border:none; color:#cbd5e1; cursor:pointer; font-size: 1.2rem; padding: 0 5px; margin: 0; display: flex; justify-content: flex-end;">✖</button>
@@ -596,12 +596,12 @@
     </div>
     
     <!-- 遊戲邏輯與網路 -->
-    <script src="audio.js?v=3.11"></script>
-    <script src="game.js?v=3.11"></script>
-    <script src="rules.js?v=3.11"></script>
-    <script src="bot.js?v=3.11"></script>
-    <script src="network.js?v=3.11"></script>
-    <script src="ui.js?v=3.11"></script>
-    <script src="app.js?v=3.11"></script>
+    <script src="audio.js?v=3.12"></script>
+    <script src="game.js?v=3.12"></script>
+    <script src="rules.js?v=3.12"></script>
+    <script src="bot.js?v=3.12"></script>
+    <script src="network.js?v=3.12"></script>
+    <script src="ui.js?v=3.12"></script>
+    <script src="app.js?v=3.12"></script>
 </body>
 </html>

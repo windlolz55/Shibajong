@@ -535,14 +535,17 @@ window.showEmote = function(playerIndex, text, isEmote = false) {
     bubble.style.top = topPos + 'px';
     
     if (position === 'left') {
-        bubble.style.left = rect.left + 'px';
+        bubble.style.left = Math.max(8, rect.left) + 'px';
         bubble.style.transform = 'translateY(10px)';
     } else if (position === 'right') {
         bubble.style.left = 'auto';
-        bubble.style.right = (window.innerWidth - rect.right) + 'px';
+        bubble.style.right = Math.max(8, window.innerWidth - rect.right) + 'px';
         bubble.style.transform = 'translateY(10px)';
     } else {
-        bubble.style.left = (rect.left + rect.width / 2) + 'px';
+        const bubbleW = bubble.offsetWidth || 120;
+        const centerLeft = rect.left + rect.width / 2;
+        const clampedCenter = Math.max(bubbleW / 2 + 8, Math.min(window.innerWidth - bubbleW / 2 - 8, centerLeft));
+        bubble.style.left = clampedCenter + 'px';
     }
     
     bubble.classList.add('show');
@@ -1745,12 +1748,14 @@ function updateGameState(state, myIndex) {
     handlePendingActions(state, myIndex);
 
     // 聽牌提示 (Tenpai Hint) 邏輯
+    const tenpaiHintEl = document.getElementById('tenpai-hint');
     if (state.gameState === 'PLAYING' || state.gameState === 'WAIT_ACTION') {
         // 使用 timeout 稍微延遲，避免阻塞主要 UI 渲染
         setTimeout(() => {
             const waitTiles = state.waitTiles ? state.waitTiles[myIndex] : [];
             const tilesEl = document.getElementById('tenpai-tiles');
             if (waitTiles && waitTiles.length > 0) {
+                if (tenpaiHintEl) tenpaiHintEl.classList.add('is-tenpai');
                 let html = '';
                 const digitToZh = {1:'一', 2:'二', 3:'三', 4:'四', 5:'五', 6:'六', 7:'七', 8:'八', 9:'九'};
                 waitTiles.forEach(t => {
@@ -1762,18 +1767,20 @@ function updateGameState(state, myIndex) {
                         if (tileName === '東' || tileName === '南' || tileName === '西' || tileName === '北') tileName += '風';
                     }
                     html += `
-                    <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-                        <div style="width:28px; height:38px; border-radius:3px; overflow:hidden; border: 1px solid #94a3b8; background-color:#f1f5f9; display:flex; align-items:center; justify-content:center;">${getTileHTML(t)}</div>
-                        <span style="font-size: 0.8rem; color: #cbd5e1; white-space: nowrap;">${tileName}</span>
+                    <div class="tenpai-item">
+                        <div class="tenpai-tile-box">${getTileHTML(t)}</div>
+                        <span class="tenpai-tile-label">${tileName}</span>
                     </div>`;
                 });
                 tilesEl.innerHTML = html;
             } else {
-                tilesEl.innerHTML = `<span style="color:#94a3b8; font-size: 0.9rem; padding: 10px;">尚未聽牌</span>`;
+                if (tenpaiHintEl) tenpaiHintEl.classList.remove('is-tenpai');
+                tilesEl.innerHTML = `<span class="tenpai-empty">尚未聽牌</span>`;
             }
         }, 10);
     } else {
-        document.getElementById('tenpai-tiles').innerHTML = `<span style="color:#94a3b8; font-size: 0.9rem; padding: 10px;">尚未聽牌</span>`;
+        if (tenpaiHintEl) tenpaiHintEl.classList.remove('is-tenpai');
+        document.getElementById('tenpai-tiles').innerHTML = `<span class="tenpai-empty">尚未聽牌</span>`;
     }
 
     if (state.gameState === 'GAME_OVER' && state.settlementData) {
@@ -1884,16 +1891,16 @@ function showSettlement(state, myIndex) {
         // 顯示胡牌者的手牌與吃碰槓 (全部平鋪，讓 flex-wrap 處理換行)
         html += `<div class="settlement-hand-display">`;
         state.melds[s.winner].forEach(meld => {
-            html += `<div class="meld-group" style="display:flex; gap:2px; margin-right:10px;">`;
+            html += `<div class="meld-group" style="display:flex; gap:2px; margin-right:6px;">`;
             meld.tiles.forEach(t => html += `<div class="tile">${getTileHTML(t)}</div>`);
             html += `</div>`;
         });
         
-        html += `<div class="hand-group" style="display:flex; gap:2px;">`;
+        html += `<div class="hand-group" style="display:flex; flex-wrap:wrap; justify-content:center; gap:2px;">`;
         const winnerHand = state.hands[s.winner];
         winnerHand.forEach((t, idx) => {
             if (idx === winnerHand.length - 1) {
-                html += `<div class="tile drawn-tile" style="margin-left: 15px;">${getTileHTML(t)}</div>`;
+                html += `<div class="tile drawn-tile" style="margin-left: 10px;">${getTileHTML(t)}</div>`;
             } else {
                 html += `<div class="tile">${getTileHTML(t)}</div>`;
             }
@@ -2168,31 +2175,40 @@ if (disconnectMsg) {
         UI.lobbyStatus.innerText = disconnectMsg;
     }
 }
-// --- Global Tooltip Boundary Fix ---
+// --- Global Tooltip Boundary Fix (Desktop Hover & Mobile Tap) ---
+function adjustTooltipPosition(tooltip) {
+    const text = tooltip.querySelector('.tai-tooltip-text');
+    if (!text) return;
+    text.style.left = '50%';
+    text.style.right = 'auto';
+    text.style.transform = 'translateX(-50%)';
+    requestAnimationFrame(() => {
+        const rect = text.getBoundingClientRect();
+        if (rect.left < 10) {
+            text.style.left = '0';
+            text.style.right = 'auto';
+            text.style.transform = 'translateX(0)';
+        } else if (rect.right > window.innerWidth - 10) {
+            text.style.left = 'auto';
+            text.style.right = '0';
+            text.style.transform = 'translateX(0)';
+        }
+    });
+}
+
 document.addEventListener('mouseover', function(e) {
     const tooltip = e.target.closest('.tai-tooltip');
+    if (tooltip) adjustTooltipPosition(tooltip);
+});
+
+document.addEventListener('click', function(e) {
+    const tooltip = e.target.closest('.tai-tooltip');
+    document.querySelectorAll('.tai-tooltip.active').forEach(el => {
+        if (el !== tooltip) el.classList.remove('active');
+    });
     if (tooltip) {
-        const text = tooltip.querySelector('.tai-tooltip-text');
-        if (text) {
-            // Reset to natural center position
-            text.style.left = '50%';
-            text.style.right = 'auto';
-            text.style.transform = 'translateX(-50%)';
-            
-            // Wait for next frame to measure
-            requestAnimationFrame(() => {
-                const rect = text.getBoundingClientRect();
-                if (rect.left < 10) {
-                    text.style.left = '0';
-                    text.style.right = 'auto';
-                    text.style.transform = 'translateX(0)';
-                } else if (rect.right > window.innerWidth - 10) {
-                    text.style.left = 'auto';
-                    text.style.right = '0';
-                    text.style.transform = 'translateX(0)';
-                }
-            });
-        }
+        tooltip.classList.toggle('active');
+        adjustTooltipPosition(tooltip);
     }
 });
 
@@ -2207,6 +2223,10 @@ document.addEventListener('mouseover', function(e) {
     let startX = 0, startY = 0;
     let initialLeft = 0, initialTop = 0;
     let hasCustomPos = false;
+
+    function getDefaultTopPercent() {
+        return (window.innerHeight > window.innerWidth && window.innerWidth <= 768) ? '58%' : '50%';
+    }
 
     // Pointer Drag Handler (Unified desktop mouse & mobile touch)
     function onPointerDown(e) {
@@ -2268,11 +2288,17 @@ document.addEventListener('mouseover', function(e) {
     window.addEventListener('pointerup', endDrag);
     window.addEventListener('pointercancel', endDrag);
 
+    // 螢幕旋轉或縮放時重置為安全位置，避免拖曳後的選單卡在畫面外
+    window.addEventListener('resize', () => {
+        hasCustomPos = false;
+        if (window.resetActionBarState) window.resetActionBarState();
+    });
+
     // Reset function called on new action turn
     window.resetActionBarState = function() {
         if (!hasCustomPos) {
             bar.style.left = '50%';
-            bar.style.top = '50%';
+            bar.style.top = getDefaultTopPercent();
             bar.style.transform = 'translate(-50%, -50%)';
         }
     };
