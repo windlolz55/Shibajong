@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mj-game-cache-v3.12';
+const CACHE_NAME = 'mj-game-cache-v3.13';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

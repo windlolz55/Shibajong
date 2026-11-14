@@ -1562,16 +1562,16 @@ function updateGameState(state, myIndex) {
             if (state.dealerIndex !== undefined) {
                 const windNames = ['東', '南', '西', '北'];
                 const windIndex = (targetPlayerIndex - state.dealerIndex + 4) % 4;
-                windIndicator = `<span style="color:#60a5fa; font-weight:bold; margin-left: 5px;">[${windNames[windIndex]}]</span>`;
+                windIndicator = `<span style="color:#60a5fa; font-weight:bold; margin-left: 3px;">[${windNames[windIndex]}]</span>`;
             }
             
             // 若玩家已聽牌，顯示提示圖示
             const tenpaiIndicator = (state.tenpaiStatus && state.tenpaiStatus[targetPlayerIndex]) 
-                ? '<span style="color:#ec4899; font-size:12px; margin-left: 5px;">📢[聽]</span>' 
+                ? '<span style="color:#ec4899; font-size:11px; margin-left: 3px;">📢[聽]</span>' 
                 : '';
             UI.infos[pos].innerHTML = `
-                <div>${playerInfo.name}${relationStr}${windIndicator} ${isDealer ? '<span style="color:#ef4444">(莊)</span>' : ''}${tenpaiIndicator}</div>
-                <div style="font-size: 0.8rem; color: #facc15;">$${state.scores[targetPlayerIndex]}</div>
+                <div class="info-line-main"><span class="info-name">${playerInfo.name}</span><span class="info-meta">${relationStr}${windIndicator}${isDealer ? '<span style="color:#ef4444; margin-left:2px;">(莊)</span>' : ''}${tenpaiIndicator}</span></div>
+                <div class="info-line-score">$${state.scores[targetPlayerIndex]}</div>
             `;
         }
         
